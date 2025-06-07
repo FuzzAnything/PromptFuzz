@@ -19,7 +19,6 @@ function download() {
     else
         git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
         git clone --depth 1 https://github.com/libjpeg-turbo/seed-corpora
-        mv libjpeg-turbo ${PROJECT_NAME}
         mv seed-corpora ${PROJECT_NAME}
     fi
 }
