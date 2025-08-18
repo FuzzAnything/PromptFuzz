@@ -2,10 +2,10 @@
 ## 🔧 Build Pre-requisites
 
 ### 1. 🐳Using Docker (Recommend)
-You can use the [Dockerfile](Docekrfile) to build the environment:
+You can use the [Dockerfile](Dockerfile) to build the environment:
 ```
 docker build -t promptfuzz .
-docker run -it promptfuzz bash
+docker run -it -v $(pwd):/root/promptfuzz promptfuzz bash
 ```
 
 ### 2. Library build scripts
