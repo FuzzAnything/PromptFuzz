@@ -44,18 +44,14 @@ Export them as environment variables or write them in the [.env](.env) file, see
 
 ### 4. Generate Fuzz drivers
 
-PromptFuzz generates fuzz drivers in a fuzz loop. There are several options that can be tuned in the configuration of promptfuzz.
-
-Typically, the only options that need to be actively set are `-c` and `-r`. 
-- The `-c` option determines the number of cores to be used for sanitization. For numerous fuzzing corpus, increse the number of cores could significantly decrease the time used for execution sanitization. 
-- Enabling the `-r` option will periodically re-check the correctness of the seed programs, reducing false positives but also introducing some extra overhead.
+PromptFuzz generates fuzz drivers in a fuzz loop. 
 
 For instance, the following command is sufficient to perform fuzzing on libaom:
 ```
-cargo run --bin fuzzer -- libaom -c $(nproc) -r
+cargo run --bin fuzzer -- libaom
 ```
 
-The detailed configurations of promptfuzz:
+There are several options that can be tuned in the configuration of promptfuzz. The detailed configurations of promptfuzz:
 
 ```
 user@ubuntu$ cargo run --bin fuzzer -- --help

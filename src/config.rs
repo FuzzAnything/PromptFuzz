@@ -10,9 +10,7 @@ pub const CONNECT_TIMEOUT: u64 = 1;
 // LLM Service Interface configure options
 pub static OPENAI_MODEL_NAME: OnceCell<String> = OnceCell::new();
 
-pub static OPENAI_CONTEXT_LIMIT: OnceCell<Option<u32>> = OnceCell::new();
-
-pub static OPENAI_PROXY_BASE: OnceCell<Option<String>> = OnceCell::new();
+pub static OPENAI_ENDPOINT: OnceCell<String> = OnceCell::new();
 
 
 // General model configure options.
@@ -82,29 +80,17 @@ pub fn get_openai_model_name() -> String {
     OPENAI_MODEL_NAME.get().unwrap().to_string()
 }
 
-pub fn get_openai_context_limit() -> &'static Option<u32> {
-    OPENAI_CONTEXT_LIMIT.get().unwrap()
-}
-
-pub fn get_openai_proxy() -> &'static Option<String> {
-    OPENAI_PROXY_BASE.get().unwrap()
+pub fn get_openai_endpoint() -> String {
+    OPENAI_ENDPOINT.get().unwrap().to_string()
 }
 
 
 pub fn init_openai_env() {
     let model = std::env::var("OPENAI_MODEL_NAME").unwrap_or_else(|_| panic!("OPENAI_MODEL_NAME not set"));
-
-    let context_limit =  std::env::var("OPENAI_CONTEXT_LIMIT")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-
-    let proxy_base = std::env::var("OPENAI_PROXY_BASE")
-        .ok()
-        .and_then(|s| s.parse::<String>().ok());
+    let endpoint = std::env::var("OPENAI_ENDPOINT").unwrap_or_else(|_| panic!("OPENAI_ENDPOINT not set"));
 
     OPENAI_MODEL_NAME.set(model).unwrap();
-    OPENAI_CONTEXT_LIMIT.set(context_limit).unwrap();
-    OPENAI_PROXY_BASE.set(proxy_base).unwrap();
+    OPENAI_ENDPOINT.set(endpoint).unwrap();
 }
 
 pub fn get_config() -> RwLockReadGuard<'static, Config>{
@@ -162,6 +148,9 @@ pub struct Config {
     /// Sampling temperature. Higher values means the model will take more risks. Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
     #[arg(short, long, default_value = "0.9")]
     pub temperature: f32,
+    /// Whether to use the deepseek reasoning.
+    #[arg(long, default_value = "false")]
+    pub deepseek_reasoning: bool,
     /// whether use the power schedule to mutate prompt. true for purly random mutation of prompt.
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
@@ -193,6 +182,7 @@ impl Config {
             target: target.to_string(),
             n_sample: 10,
             temperature: 0.6,
+            deepseek_reasoning: false,
             cores: 10,
             max_cores: 0,
             fuzz_round_succ: 1,
