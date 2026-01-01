@@ -335,6 +335,7 @@ impl TimeUsage {
         let save_path = self.get_ty_usage_file(ty);
         let mut file = std::fs::OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(save_path)?;
         std::io::Write::write_fmt(&mut file, format_args!("{}", usage))?;
