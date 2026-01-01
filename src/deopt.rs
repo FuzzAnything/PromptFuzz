@@ -160,7 +160,7 @@ impl Deopt {
 
     /// get the data directory of the library under test.
     pub fn get_library_data_dir(&self) -> Result<PathBuf> {
-        let data_dir: PathBuf = [Deopt::get_crate_dir()?, "data", &self.project_name]
+        let data_dir: PathBuf = [Deopt::get_crate_dir()?, "libraries", &self.project_name]
             .iter()
             .collect();
         Ok(data_dir)
