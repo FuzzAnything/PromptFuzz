@@ -9,17 +9,18 @@ docker build -t promptfuzz .
 
 Start the docker container in daemon mode:
 ```
-docker run -itd --name <CONTAINER_NAME> promptfuzz /bin/bash
+CONTAINER_NAME=<YOUR_CONTAINER_NAME>
+docker run -itd -v $(pwd):/root/promptfuzz:Z --name ${CONTAINER_NAME} promptfuzz /bin/bash
 ```
 Then, attach into the docker container:
 ```
-docker exec -it <CONTAINER_NAME> /bin/bash
+docker exec -it${CONTAINER_NAME} /bin/bash
 # using tmux to maintian a persistent session
 $ tmux new
 ```
 
 -----
-For developers and advance usage, see [DEVELPER.md](DEVELOPER.md).
+For developers and advance usage, see [DEVELOPER.md](DEVELOPER.md).
 
 ## 🦄Basic Usage
 
@@ -45,7 +46,9 @@ Export them as environment variables or write them in the [.env](.env) file, see
 
 PromptFuzz generates fuzz drivers in a fuzz loop. There are several options that can be tuned in the configuration of promptfuzz.
 
-Typically, the only options that need to be actively set are `-c` and `-r`. The `-c` option determines the number of cores to be used for sanitization. For numerous fuzzing corpus, increse the number of cores could significantly decrease the time used for execution sanitization. Enabling the `-r` option will periodically re-check the correctness of the seed programs, reducing false positives but also introducing some extra overhead.
+Typically, the only options that need to be actively set are `-c` and `-r`. 
+- The `-c` option determines the number of cores to be used for sanitization. For numerous fuzzing corpus, increse the number of cores could significantly decrease the time used for execution sanitization. 
+- Enabling the `-r` option will periodically re-check the correctness of the seed programs, reducing false positives but also introducing some extra overhead.
 
 For instance, the following command is sufficient to perform fuzzing on libaom:
 ```

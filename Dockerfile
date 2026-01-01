@@ -22,7 +22,7 @@ RUN wget https://apt.llvm.org/llvm.sh \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && rustup default stable
 
 # Install Dependency for easier development
-RUN apt-get install -y tmux vim 
+RUN apt-get install -y tmux vim bubblewrap
 
 RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git && \
     ln -s -f .tmux/.tmux.conf && \
