@@ -625,7 +625,7 @@ impl super::Handler for HttpHandler {
         // 转换为我们的消息格式
         let messages: Vec<OpenAIMessage> = chat_msgs
             .iter()
-            .map(|msg| HttpClient::convert_chat_message(msg))
+            .map(HttpClient::convert_chat_message)
             .collect();
         
         // 获取配置

@@ -117,8 +117,8 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
             OpenAIConfig::new()
         };
         let client = Client::with_config(openai_config);
-        let client = client.with_http_client(http_client);
-        client
+        
+        client.with_http_client(http_client)
     });
     Ok(client)
 }
@@ -175,7 +175,7 @@ pub async fn generate_program_by_chat(
     let usage = TokenUsage::from_response(&respond);
     let choice = respond.choices.first().unwrap();
     let content = choice.message.content.as_ref().unwrap();
-    let content = strip_code_wrapper(&content);
+    let content = strip_code_wrapper(content);
     let program = Program::new(&content);
     Ok((program, usage))
 }

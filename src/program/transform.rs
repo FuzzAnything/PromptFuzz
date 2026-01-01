@@ -678,7 +678,7 @@ impl<'a> Transformer<'a> {
             .unwrap();
 
         self.change_arg_by_constraint(
-            (call, &call_name, *n_call),
+            (call, call_name, *n_call),
             *arg_pos,
             arg,
             constraint,

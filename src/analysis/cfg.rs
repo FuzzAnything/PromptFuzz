@@ -197,7 +197,7 @@ impl CFGBlock {
         self.ident.contains("Exit")
     }
 
-    pub fn iter_stmts(&self) -> Iter<Rc<ast::Node>> {
+    pub fn iter_stmts(&self) -> Iter<'_, Rc<ast::Node>> {
         self.stmts.iter()
     }
 
@@ -296,7 +296,7 @@ impl CFG {
         let node = self
             .graph
             .node_indices()
-            .last()
+            .next_back()
             .ok_or_else(|| eyre::eyre!("Empty CFG."))?;
         let exit = self
             .graph

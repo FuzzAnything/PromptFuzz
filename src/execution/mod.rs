@@ -80,7 +80,7 @@ impl Executor {
             Compile::Minimize => {
                 let mut flags = crate::config::FUZZER_FLAGS.to_vec();
                 let min_flag = get_minimize_compile_flag();
-                flags.push(&min_flag);
+                flags.push(min_flag);
                 let fuzz_lib = crate::deopt::utils::get_fuzzer_lib_path(&self.deopt);
                 (flags, fuzz_lib)
             }
@@ -296,7 +296,7 @@ impl Executor {
             }
             let wait_time = config::MIN_FUZZ_TIME;
             // no coverage gained during config::MIN_FUZZ_TIME, break
-            if cost_time >= wait_time && cost_time % wait_time == 0 {
+            if cost_time >= wait_time && cost_time.is_multiple_of(wait_time) {
                 let cov = parse_cov_from_log(&log_file)?;
                 if let Some(cov) = cov {
                     if let Some(p_cov) = previous_cov {
@@ -463,7 +463,7 @@ impl Executor {
         crate::deopt::utils::create_dir_if_nonexist(&minimize_dir)?;
         let mcf_arg = format!(
             "-merge_control_file={}",
-            control_file.to_string_lossy().to_string()
+            control_file.to_string_lossy()
         );
         let extra_args = vec![
             OsStr::new("-merge=1"),
@@ -620,11 +620,7 @@ impl Executor {
         } else {
             60 * 60 * 24
         };
-        let should_minimize = if let Some(min) = min_corpus {
-            min
-        } else {
-            true
-        };
+        let should_minimize = min_corpus.unwrap_or(true);
 
         if !fuzzer_dir.is_dir() {
             eyre::bail!("Fuzzer_dir {fuzzer_dir:?} should be a dir")

@@ -111,8 +111,8 @@ pub fn get_config() -> RwLockReadGuard<'static, Config>{
 
 pub fn get_library_name() -> String {
     let config = CONFIG_INSTANCE.get().unwrap().read().unwrap();
-    let target = config.target.clone();
-    target
+    
+    config.target.clone()
 }
 
 pub fn get_sample_num() -> u8 {
