@@ -34,7 +34,6 @@ impl Fuzzer {
         let deopt = Deopt::new(get_library_name())?;
         let executor = Executor::new(&deopt)?;
         let observer = Observer::new(&deopt);
-        // 根据配置选择handler类型
         let handler: Box<dyn request::Handler> = Box::<request::openai::OpenAIHanler>::default();
         init_gtl();
         let fuzzer = Self {

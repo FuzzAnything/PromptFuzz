@@ -119,7 +119,7 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
     let client = CLIENT.get_or_init(|| {
         let http_client = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(180))
+            .timeout(Duration::from_secs(300))
             .build()
             .unwrap();
         let endpoint = get_openai_endpoint();
@@ -192,6 +192,7 @@ impl CreateChatCompletionRequestExtra {
             "separate_reasoning": true,
             "chat_template_kwargs": {"thinking": true}
         });
+        //let extra_body = serde_json::json!({"reasoning": {"enabled": true}});
         Self { request, extra_body: extra_body}
     }
 }
@@ -310,8 +311,12 @@ mod tests {
     fn test_get_client() -> Result<()> {
         dotenv::dotenv().ok();
         config::init_openai_env();
+        config::Config::init_test("libaom");
         
-        let client = get_client().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap_or_else(|_| panic!("Unable to build the openai runtime."));
         
         let messages: Vec<ChatCompletionRequestMessage> = vec![
             ChatCompletionRequestSystemMessageArgs::default()
@@ -322,34 +327,9 @@ mod tests {
             .build()?.into()
         ];
 
-        // 创建请求
-        let request = CreateChatCompletionRequestArgs::default()
-            .model("claude_sonnet4")  // 使用Claude 2模型
-            .messages(messages)
-            .stream(false)
-            .build()?;
-        
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap_or_else(|_| panic!("Unable to build the openai runtime."));
-        // 发送请求
-        let response = rt.block_on(client.chat().create(request));
-        
-        // 处理响应
-        match response {
-            Ok(response) => {
-                if let Some(choice) = response.choices.first() {
-                    if let Some(con) = &choice.message.content {
-                        println!("Response: {}", con);
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("API call failed: {:#?}", e);                // 不要panic，让测试继续
-                return Err(e.into());
-            }
-        }
+        let request = create_reasoning_chat_request(messages, None)?;
+        let response = rt.block_on(get_reasoning_chat_response(request))?;
+        println!("{:#?}", response);
         Ok(())
     }
 }

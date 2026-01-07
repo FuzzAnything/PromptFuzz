@@ -151,6 +151,9 @@ pub struct Config {
     /// Whether to use the deepseek reasoning.
     #[arg(long, default_value = "false")]
     pub deepseek_reasoning: bool,
+    /// Whether to include all headers for parsing APIs.
+    #[arg(long, default_value = "false")]
+    pub include_all_headers: bool,
     /// whether use the power schedule to mutate prompt. true for purly random mutation of prompt.
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
@@ -183,6 +186,7 @@ impl Config {
             n_sample: 10,
             temperature: 0.6,
             deepseek_reasoning: false,
+            include_all_headers: false,
             cores: 10,
             max_cores: 0,
             fuzz_round_succ: 1,

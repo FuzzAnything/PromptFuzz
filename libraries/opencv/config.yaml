@@ -1,0 +1,5 @@
+project_name: opencv
+static_lib_name: libopencv_world.a
+dyn_lib_name: libopencv_world.so
+ban:
+  ~

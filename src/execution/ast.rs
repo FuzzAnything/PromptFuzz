@@ -88,6 +88,7 @@ impl Executor {
         let headers =
             crate::deopt::utils::read_all_files_in_dir(&deopt.get_library_build_header_path()?)?;
         let _ = eliminate_irrelative_ast(&mut ast, &headers);
+        log::info!("Parsed header for: {header:?}");
         Ok(ast)
     }
 

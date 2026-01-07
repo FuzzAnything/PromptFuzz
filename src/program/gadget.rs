@@ -1033,7 +1033,7 @@ mod tests {
 
     #[test]
     fn test_parse_func_gadgets() -> Result<()> {
-        crate::config::Config::init_test("cre2");
+        crate::config::Config::init_test("libavc");
         let gadgets = get_func_gadgets();
         for gadget in gadgets {
             println!("{}", gadget.gen_signature())
