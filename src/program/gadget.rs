@@ -396,6 +396,11 @@ pub mod func_gadget {
             if let Clang::FunctionDecl(fd) = &child.kind {
                 let name = fd.get_name();
                 log::trace!("parse gadget: {name}");
+                if let Some(ban) = &deopt.config.ban {
+                    if ban.contains(&name) {
+                        continue;
+                    }
+                }
                 let params = fd.get_params(child);
                 let alias_ret_type = fd.get_ret_type();
                 let ret_type = to_gadget_type(&alias_ret_type)?;

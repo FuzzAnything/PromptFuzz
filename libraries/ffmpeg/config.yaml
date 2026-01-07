@@ -2,6 +2,6 @@ project_name: FFmpeg
 static_lib_name: libffmpeg.a
 dyn_lib_name: libffmpeg.so
 ban:
-  ~
+  - avcodec_align_dimensions2
 extra_c_flags: 
   - -lz
