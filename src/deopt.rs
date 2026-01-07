@@ -651,23 +651,32 @@ pub mod utils {
         static HEADER: OnceCell<String> = OnceCell::new();
         HEADER.get_or_init(|| {
             let mut content = String::new();
+            for header in get_standard_headers() {
+                content.push_str(&format!("#include <{header}>\n"));
+            }
+            content.push_str("extern \"C\" {\n");
             for header in get_library_headers(deopt).unwrap() {
                 content.push_str(&format!("#include <{header}>\n"));
             }
+            content.push_str("}\n");
             content
         })
     }
 
     pub fn get_library_headers(deopt: &Deopt) -> Result<Vec<String>> {
-        let mut headers = get_include_lib_headers(deopt)?;
-        headers.push("stdlib.h".to_string());
-        headers.push("string.h".to_string());
-        headers.push("stdint.h".to_string());
-        headers.push("vector".to_string());
-        headers.push("fstream".to_string());
-        headers.push("iostream".to_string());
-        headers.push("sstream".to_string());
-        Ok(headers)
+        get_include_lib_headers(deopt)
+    }
+
+    pub fn get_standard_headers() -> Vec<String> {
+        vec![
+            "stdlib.h".to_string(),
+            "string.h".to_string(),
+            "stdint.h".to_string(),
+            "vector".to_string(),
+            "fstream".to_string(),
+            "iostream".to_string(),
+            "sstream".to_string(),
+        ]
     }
 
     /// Get the paths of all corpus files in the corpus directory.
