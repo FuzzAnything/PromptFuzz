@@ -119,7 +119,7 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
     let client = CLIENT.get_or_init(|| {
         let http_client = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(300))
+            .timeout(Duration::from_secs(600))
             .build()
             .unwrap();
         let endpoint = get_openai_endpoint();

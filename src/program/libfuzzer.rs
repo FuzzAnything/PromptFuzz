@@ -153,14 +153,17 @@ impl LibFuzzer {
 
         let executor = Executor::default();
         let mut tasks = Vec::new();
+        let mut task_corpus = Vec::new();
         for (i, program) in self.programs.iter().enumerate() {
             let corpora = &test_corpus[i];
             let i = i + 1;
             tasks.push(program.clone());
+            task_corpus.push(corpora.to_path_buf());
 
             if i % self.core == 0 || i == self.programs.len() {
-                executor.concurrent_transform(&tasks, self.core, true, Some(corpora))?;
+                executor.concurrent_transform(&tasks, self.core, true, &task_corpus)?;
                 tasks.clear();
+                task_corpus.clear();
                 log::debug!("transformed {i}/{}", self.programs.len());
             }
         }

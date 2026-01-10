@@ -144,8 +144,11 @@ impl<'a> Transformer<'a> {
         let mut executor = Executor::new(self.deopt)?;
         for nth in 0..transform_len {
             let mut transformer = Self::new(&self.src_file, self.deopt)?.without_self_change();
-            transformer.transform_to_fuzzer(constraints, vec![nth])?;
-            let out_driver = transformer.get_output_file();
+            if let Err(_) = transformer.transform_to_fuzzer(constraints, vec![nth]) {
+                // change this arg will cause syntax error: see https://github.com/FuzzAnything/PromptFuzz/issues/41
+                continue;
+            }
+            let out_driver: &Path = transformer.get_output_file();
             if let Some(err) = executor.transform_check(out_driver, corpora)? {
                 let err_msg = err.get_err_msg();
                 log::warn!(

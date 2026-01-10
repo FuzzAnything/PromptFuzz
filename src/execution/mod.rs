@@ -486,15 +486,15 @@ impl Executor {
         programs: &Vec<PathBuf>,
         core: usize,
         use_cons: bool,
-        corpora: Option<&Path>,
+        corpus: &Vec<PathBuf>,
     ) -> Result<()> {
         let pool = ThreadPool::new(core);
         let error_occurred = Arc::new(AtomicBool::new(false));
 
-        for program in programs {
+        for (i, program) in programs.iter().enumerate() {
             let error_occurred = Arc::clone(&error_occurred);
             let program = program.clone();
-            let corpora = corpora.as_ref().map(|corpora| corpora.to_path_buf());
+            let corpora = corpus[i].clone();
 
             // the constraints are load in harness.
             pool.execute(move || {
@@ -514,7 +514,7 @@ impl Executor {
                 if use_cons {
                     cmd.arg("-u");
                     cmd.arg("-p");
-                    cmd.arg(corpora.expect("corpora must be passed when use constraint"));
+                    cmd.arg(&corpora);
                 }
                 let output = cmd
                     .stdin(Stdio::null())
