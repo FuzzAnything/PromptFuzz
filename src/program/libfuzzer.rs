@@ -131,7 +131,7 @@ impl LibFuzzer {
 
     // transform the programs be more exploitable.
     // transform all array/scalar arguments be fuzzable and consider their constraints.
-    fn exploit_transform(&self) -> Result<()> {
+    fn exploit_transform(&mut self) -> Result<()> {
         log::info!("Transform the correct programs to fuzzers with Constraints!");
         if crate::program::infer::load_constraints(&self.deopt).is_err() {
             let succ_programs =
@@ -140,10 +140,16 @@ impl LibFuzzer {
         }
 
         let mut test_corpus = vec![];
-        for program in &self.programs {
-            let corpora = find_testbed_corpora(program, &self.deopt)?;
-            test_corpus.push(corpora);
+        let mut new_programs = vec![];
+        for program in self.programs.iter() {
+            if let Ok(corpora) = find_testbed_corpora(program, &self.deopt) {
+                test_corpus.push(corpora);
+            } else {
+                log::error!("Failed to find testbed corpora for program: {program:?}, skip it and continue...");
+                new_programs.push(program.to_path_buf());
+            }
         }
+        self.programs = new_programs;
 
         let executor = Executor::default();
         let mut tasks = Vec::new();

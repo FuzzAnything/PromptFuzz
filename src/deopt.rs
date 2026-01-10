@@ -654,11 +654,15 @@ pub mod utils {
             for header in get_standard_headers() {
                 content.push_str(&format!("#include <{header}>\n"));
             }
-            content.push_str("extern \"C\" {\n");
             for header in get_library_headers(deopt).unwrap() {
-                content.push_str(&format!("#include <{header}>\n"));
+                if header.ends_with(".h") {
+                    content.push_str("extern \"C\" {\n");
+                    content.push_str(&format!("#include <{header}>\n"));            
+                    content.push_str("}\n");
+                } else {
+                    content.push_str(&format!("#include <{header}>\n"));            
+                }
             }
-            content.push_str("}\n");
             content
         })
     }
