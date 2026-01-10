@@ -5,3 +5,4 @@ ban:
   - avcodec_align_dimensions2
 extra_c_flags: 
   - -lz
+  - -lbz2
