@@ -33,7 +33,7 @@ function san_env() {
     unset CXXFLAGS
     export CC=clang
     export CXX=clang++
-    SANITIZER_FLAGS="-O2 -fsanitize=address,undefined -fsanitize-address-use-after-scope -g "
+    SANITIZER_FLAGS="-O2 -fsanitize=address,undefined -fsanitize-address-use-after-scope -g -fPIC"
     export CFLAGS="${CFLAGS:-} $SANITIZER_FLAGS"
     export CXXFLAGS="${CXXFLAGS:-} $SANITIZER_FLAGS"
 }
@@ -50,7 +50,7 @@ function libfuzzer_env() {
 
     unset CFLAGS
     unset CXXFLAGS
-    FUZZER_FLAGS="-fsanitize=fuzzer-no-link -fno-omit-frame-pointer -g -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $SANITIZER_FLAGS"
+    FUZZER_FLAGS="-fsanitize=fuzzer-no-link -fno-omit-frame-pointer -g -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION $SANITIZER_FLAGS -fPIC"
     export CFLAGS="${CFLAGS:-} $FUZZER_FLAGS"
     export CXXFLAGS="${CXXFLAGS:-} $FUZZER_FLAGS"
     export CUSTOM_FLAGS=${LIBFUZZER_CUSTOM_FLAGS:-}
@@ -71,9 +71,25 @@ function coverage_env() {
     blue_echo "set coverage env"
     export CC=clang
     export CXX=clang++
-    COVERAGE_FLAGS="-g -fsanitize=fuzzer-no-link -fno-sanitize=undefined -fprofile-instr-generate -fcoverage-mapping -Wl,--no-as-needed -Wl,-ldl -Wl,-lm -Wno-unused-command-line-argument -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION "
+    COVERAGE_FLAGS="-g -fsanitize=fuzzer-no-link -fno-sanitize=undefined -fprofile-instr-generate -fcoverage-mapping -Wl,--no-as-needed -Wl,-ldl -Wl,-lm -Wno-unused-command-line-argument -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION -fPIC"
     export CFLAGS="${CFLAGS:-} $COVERAGE_FLAGS"
     export CXXFLAGS="${CXXFLAGS:-} $COVERAGE_FLAGS"
+}
+
+function extract_bc_alternative() {
+    temp_dir="/tmp/extract_bc_dir"
+    if [ -d "$temp_dir" ]; then
+        rm -rf $temp_dir
+    fi
+    mkdir -p $temp_dir
+    static_lib=$1
+    temp_lib=$temp_dir/$(basename $static_lib)
+    cp $static_lib $temp_lib
+    cd $temp_dir
+    ar x $temp_lib
+    for lib in $(ls *.o); do extract-bc $lib; done
+    llvm-link --only-needed *.bc -o $static_lib.bc
+    rm -rf $temp_dir
 }
 
 function build_bc() {
@@ -91,6 +107,10 @@ function build_bc() {
     build_lib
     cd $WORK
     extract-bc -b $LIB_STORE_DIR/$STALIB_NAME
+    if [ ! -f $LIB_STORE_DIR/$STALIB_NAME.bc ]; then
+        echo "extract-bc failed"
+        extract_bc_alternative $LIB_STORE_DIR/$STALIB_NAME
+    fi
     opt -passes=dot-callgraph $LIB_STORE_DIR/${STALIB_NAME}.bc
     mv $LIB_STORE_DIR/${STALIB_NAME}.bc.callgraph.dot callgraph.dot
     sed -i '/^[[:space:]]*label="Call graph:/d' callgraph.dot
@@ -134,11 +154,6 @@ function build_fuzzer() {
     san_env
     libfuzzer_env
     build_lib
-    OLD_OUT=$OUT
-    OUT=$OUT/oss_fuzzer
-    mkdir -p $OUT
-    build_oss_fuzz
-    OUT=$OLD_OUT
     copy_lib fuzzer
 }
 
@@ -155,11 +170,6 @@ function build_cov() {
     coverage_env
     build_lib
     copy_lib cov
-    OLD_OUT=$OUT
-    OUT=$OUT/oss_fuzzer_cov
-    mkdir -p $OUT
-    build_oss_fuzz
-    OUT=$OLD_OUT
 }
 
 function write_magicbytes_to_dict() {

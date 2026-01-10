@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-openai = { version = "0.28.2" }
+async-openai = { version = "0.28.2", features = ["byot"]}
 eyre = "0.6.8"
 flexi_logger = "0.25.1"
 log = "0.4.17"

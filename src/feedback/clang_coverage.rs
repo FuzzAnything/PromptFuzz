@@ -206,7 +206,7 @@ impl CodeCoverage {
             .find(|func_cov| func_cov.get_name() == func)
     }
 
-    pub fn iter_function_covs(&self) -> core::slice::Iter<CovFunction> {
+    pub fn iter_function_covs(&self) -> core::slice::Iter<'_, CovFunction> {
         let iter = self.data[0].functions.iter();
         iter
     }
@@ -293,7 +293,7 @@ impl GlobalFeature {
         let work_dir = get_file_dirname(fuzzer);
         let control_file: PathBuf = [work_dir, "merge_control_file".into()].iter().collect();
         executor.minimize_by_control_file(
-            &fuzzer,
+            fuzzer,
             &executor.deopt.get_library_shared_corpus_dir()?,
             &control_file,
         )?;

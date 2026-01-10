@@ -1,0 +1,7 @@
+project_name: protobuf
+static_lib_name: libprotobuf.a
+dyn_lib_name: libprotobuf.so
+ban:
+  ~
+extra_c_flags: 
+  - -labsl_base

@@ -3,8 +3,8 @@
 source ../common.sh
 
 PROJECT_NAME=libpng
-STALIB_NAME=libpng16.a
-DYNLIB_NAME=libpng16.so
+STALIB_NAME=libpng18.a
+DYNLIB_NAME=libpng18.so
 DIR=$(pwd)
 
 
@@ -47,16 +47,7 @@ function build_lib() {
     autoreconf -f -i
     ./configure
     make -j$(nproc) clean
-    make -j$(nproc) libpng16.la
-}
-
-function build_oss_fuzz() {
-    cd $SRC/libpng
-    # build libpng_read_fuzzer.
-    $CXX $CXXFLAGS -std=c++11 -I. \
-        $SRC/libpng/contrib/oss-fuzz/libpng_read_fuzzer.cc \
-        -o $OUT/libpng_read_fuzzer \
-        $LIB_FUZZING_ENGINE .libs/libpng16.a -lz
+    make -j$(nproc) all
 }
 
 function copy_include() {
@@ -82,7 +73,7 @@ function build_corpus() {
 }
 
 function build_dict() {
-    cp $SRC/libpng/contrib/oss-fuzz/png.dict ${LIB_BUILD}/fuzzer.dict
+    ls
 }
 
 build_all

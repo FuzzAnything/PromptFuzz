@@ -1,7 +1,7 @@
 use std::{process::Child, time::Duration};
 
 use crate::{
-    config::{self, get_config, get_openai_proxy},
+    config::{self, get_config, get_openai_endpoint},
     is_critical_err,
     program::Program,
     FuzzerError,
@@ -14,6 +14,9 @@ use async_openai::{
 use eyre::Result;
 use once_cell::sync::OnceCell;
 use futures::future::join_all;
+use serde::Serialize;
+use serde_json::Value;
+
 
 
 use super::Handler;
@@ -44,6 +47,14 @@ impl TokenUsage {
             }
         } else {
             Self::default()
+        }
+    }
+
+    pub fn from_raw_response(response: &Value) -> Self {
+        Self {
+            prompt_tokens: response["usage"]["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: response["usage"]["completion_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: response["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
         }
     }
     
@@ -108,17 +119,14 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
     let client = CLIENT.get_or_init(|| {
         let http_client = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
-            .timeout(Duration::from_secs(180))
+            .timeout(Duration::from_secs(300))
             .build()
             .unwrap();
-        let openai_config = if let Some(proxy) = get_openai_proxy() {
-            OpenAIConfig::default().with_api_base(proxy)
-        } else {
-            OpenAIConfig::new()
-        };
+        let endpoint = get_openai_endpoint();
+        let openai_config = OpenAIConfig::default().with_api_base(endpoint);
         let client = Client::with_config(openai_config);
-        let client = client.with_http_client(http_client);
-        client
+        
+        client.with_http_client(http_client)
     });
     Ok(client)
 }
@@ -145,7 +153,7 @@ fn create_chat_request(
 async fn get_chat_response(
     request: CreateChatCompletionRequest,
 ) -> Result<CreateChatCompletionResponse> {
-    let client = get_client().unwrap();
+    let client: &Client<OpenAIConfig> = get_client().unwrap();
     for _retry in 0..config::RETRY_N {
         let response = client
             .chat()
@@ -166,15 +174,94 @@ async fn get_chat_response(
     Err(FuzzerError::RetryError(format!("{request:?}"), config::RETRY_N).into())
 }
 
+
+
+#[derive(Serialize)]
+struct CreateChatCompletionRequestExtra {
+  // https://serde.rs/attr-flatten.html
+  #[serde(flatten)] 
+  pub request: CreateChatCompletionRequest, // original request type
+  #[serde(flatten)]
+  pub extra_body: serde_json::Value, // or this can be your custom type
+}
+
+impl CreateChatCompletionRequestExtra {
+
+    pub fn with_deepseek_reason_body(request: CreateChatCompletionRequest) -> Self {
+        let extra_body = serde_json::json!({
+            "separate_reasoning": true,
+            "chat_template_kwargs": {"thinking": true}
+        });
+        //let extra_body = serde_json::json!({"reasoning": {"enabled": true}});
+        Self { request, extra_body: extra_body}
+    }
+}
+
+
+/// Create a request for a chat prompt
+fn create_reasoning_chat_request(
+    msgs: Vec<ChatCompletionRequestMessage>,
+    stop: Option<String>,
+) -> Result<Value> {
+    let mut binding: CreateChatCompletionRequestArgs = CreateChatCompletionRequestArgs::default();
+    let binding = binding.model(config::get_openai_model_name());
+
+    let mut request = binding
+        .messages(msgs)
+        .temperature(config::get_config().temperature);
+    if let Some(stop) = stop {
+        request = request.stop(stop);
+    }
+    let request = request.build()?;
+    let request = CreateChatCompletionRequestExtra::with_deepseek_reason_body(request);
+    let request = serde_json::to_value(request)?;
+    Ok(request)
+}
+
+/// Get a response for a chat request
+async fn get_reasoning_chat_response(
+    request: Value,
+) -> Result<Value> {
+    let client = get_client().unwrap();
+
+    for _retry in 0..config::RETRY_N {
+        let response = client
+            .chat()
+            .create_byot(&request)
+            .await
+            .map_err(eyre::Report::new);
+        match is_critical_err(&response) {
+            crate::Critical::Normal => {
+                let response = response?;
+                return Ok(response);
+            }
+            crate::Critical::NonCritical => {
+                continue;
+            }
+            crate::Critical::Critical => return Err(response.err().unwrap()),
+        }
+    }
+    Err(FuzzerError::RetryError(format!("{request:?}"), config::RETRY_N).into())
+}
+
+
 pub async fn generate_program_by_chat(
     chat_msgs: Vec<ChatCompletionRequestMessage>,
 ) -> Result<(Program, TokenUsage)> {
-    let request = create_chat_request(chat_msgs, None)?;
-    let respond = get_chat_response(request).await?;
-    
-    let usage = TokenUsage::from_response(&respond);
-    let choice = respond.choices.first().unwrap();
-    let content = choice.message.content.as_ref().unwrap();
+    let (content, usage) =  if get_config().deepseek_reasoning {
+        let request = create_reasoning_chat_request(chat_msgs, None)?;
+        let response = get_reasoning_chat_response(request).await?;
+        let usage = TokenUsage::from_raw_response(&response);
+        let content = response["choices"][0]["message"]["content"].as_str().unwrap().to_string();
+        (content, usage)
+    } else {
+        let request = create_chat_request(chat_msgs, None)?;
+        let respond = get_chat_response(request).await?;
+        let usage = TokenUsage::from_response(&respond);
+        let choice = respond.choices.first().unwrap();
+        let content = choice.message.content.as_ref().unwrap().to_string();
+        (content, usage)
+    };
     let content = strip_code_wrapper(&content);
     let program = Program::new(&content);
     Ok((program, usage))
@@ -224,8 +311,12 @@ mod tests {
     fn test_get_client() -> Result<()> {
         dotenv::dotenv().ok();
         config::init_openai_env();
+        config::Config::init_test("libaom");
         
-        let client = get_client().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap_or_else(|_| panic!("Unable to build the openai runtime."));
         
         let messages: Vec<ChatCompletionRequestMessage> = vec![
             ChatCompletionRequestSystemMessageArgs::default()
@@ -236,34 +327,9 @@ mod tests {
             .build()?.into()
         ];
 
-        // 创建请求
-        let request = CreateChatCompletionRequestArgs::default()
-            .model("claude_sonnet4")  // 使用Claude 2模型
-            .messages(messages)
-            .stream(false)
-            .build()?;
-        
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap_or_else(|_| panic!("Unable to build the openai runtime."));
-        // 发送请求
-        let response = rt.block_on(client.chat().create(request));
-        
-        // 处理响应
-        match response {
-            Ok(response) => {
-                if let Some(choice) = response.choices.first() {
-                    if let Some(con) = &choice.message.content {
-                        println!("Response: {}", con);
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("API call failed: {:#?}", e);                // 不要panic，让测试继续
-                return Err(e.into());
-            }
-        }
+        let request = create_reasoning_chat_request(messages, None)?;
+        let response = rt.block_on(get_reasoning_chat_response(request))?;
+        println!("{:#?}", response);
         Ok(())
     }
 }

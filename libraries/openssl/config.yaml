@@ -1,0 +1,13 @@
+project_name: openssl
+static_lib_name: libopenssl.a
+dyn_lib_name: libopenssl.so
+ban:
+  - Camellia_ctr128_encrypt
+  - SEED_set_key
+  - SEED_encrypt
+  - SEED_decrypt
+  - SEED_cbc_encrypt
+  - SEED_cfb128_encrypt
+  - SEED_ofb128_encrypt
+extra_c_flags: 
+  - -lz

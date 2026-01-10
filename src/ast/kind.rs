@@ -444,7 +444,7 @@ impl ParmVarDecl {
             let sized_ty: String = [raw_ty, "[", &value.to_string(), "]"].concat();
             return sized_ty;
         }
-        unreachable!("Meet a sized ParamDecl but fail to get its exact value, please ban this function. Extracted src_content: {src_content}, ty: {raw_ty}")
+        unreachable!("Meet a sized ParamDecl but fail to get its exact value, please ban this function. Extracted src_content: {src_content}, ty: {raw_ty}, range: {0:#?}", self.range)
     }
 
     fn get_number(s: &str) -> Option<usize> {

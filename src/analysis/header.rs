@@ -191,7 +191,7 @@ fn get_independent_headers(trees: &[TreeNode]) -> Result<Vec<&str>> {
     // Find all root nodes (nodes not included by any other nodes)
     let mut independent_headers: Vec<&str> = Vec::new();
     
-    for (name, _node) in &all_nodes {
+    for name in all_nodes.keys() {
         if !included_by_others.contains(name) {
             independent_headers.push(name);
         }

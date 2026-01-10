@@ -11,7 +11,7 @@
 //! Note:
 //! 1. field-insensitive, e.g., does not differ array[i] with array.
 //! 2. value abstraction, e.g., record where the variable obtained from or passed to and attach it with an abstract symbol value.
-//!     But it does not evaluate the variable with exact compution.
+//!    But it does not evaluate the variable with exact compution.
 //!
 //! Inter-procedural analysis is expensive,
 //!     as its goal of design is to build ADG,

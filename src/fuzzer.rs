@@ -1,5 +1,5 @@
 use crate::{
-    config::{self, get_config, get_library_name, get_handler_type, HandlerType},
+    config::{self, get_config, get_library_name},
     deopt::Deopt,
     execution::{
         logger::{init_gtl, ProgramLogger},
@@ -34,18 +34,7 @@ impl Fuzzer {
         let deopt = Deopt::new(get_library_name())?;
         let executor = Executor::new(&deopt)?;
         let observer = Observer::new(&deopt);
-        // 根据配置选择handler类型
-        let handler: Box<dyn request::Handler> = match get_handler_type() {
-            HandlerType::Openai => {
-                log::info!("Using OpenAI handler");
-                Box::<request::openai::OpenAIHanler>::default()
-            }
-            HandlerType::Http => {
-                log::info!("Using HTTP handler");
-                Box::new(request::http::HttpHandler::new().unwrap())
-            }
-        };
-
+        let handler: Box<dyn request::Handler> = Box::<request::openai::OpenAIHanler>::default();
         init_gtl();
         let fuzzer = Self {
             deopt,
@@ -181,6 +170,9 @@ impl Fuzzer {
     }
 
     pub fn is_converge(&self) -> bool {
+        if get_config().fuzz_converge_round == 0 {
+            return false;
+        }
         if self.quiet_round >= get_config().fuzz_converge_round
         {
             return true;

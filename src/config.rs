@@ -1,15 +1,16 @@
 use std::sync::{RwLock, RwLockReadGuard};
 
+use clap::Parser;
 use once_cell::sync::OnceCell;
+
+use crate::deopt::Deopt;
 
 pub const CONNECT_TIMEOUT: u64 = 1;
 
 // LLM Service Interface configure options
 pub static OPENAI_MODEL_NAME: OnceCell<String> = OnceCell::new();
 
-pub static OPENAI_CONTEXT_LIMIT: OnceCell<Option<u32>> = OnceCell::new();
-
-pub static OPENAI_PROXY_BASE: OnceCell<Option<String>> = OnceCell::new();
+pub static OPENAI_ENDPOINT: OnceCell<String> = OnceCell::new();
 
 
 // General model configure options.
@@ -79,29 +80,17 @@ pub fn get_openai_model_name() -> String {
     OPENAI_MODEL_NAME.get().unwrap().to_string()
 }
 
-pub fn get_openai_context_limit() -> &'static Option<u32> {
-    OPENAI_CONTEXT_LIMIT.get().unwrap()
-}
-
-pub fn get_openai_proxy() -> &'static Option<String> {
-    OPENAI_PROXY_BASE.get().unwrap()
+pub fn get_openai_endpoint() -> String {
+    OPENAI_ENDPOINT.get().unwrap().to_string()
 }
 
 
 pub fn init_openai_env() {
     let model = std::env::var("OPENAI_MODEL_NAME").unwrap_or_else(|_| panic!("OPENAI_MODEL_NAME not set"));
-
-    let context_limit =  std::env::var("OPENAI_CONTEXT_LIMIT")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-
-    let proxy_base = std::env::var("OPENAI_PROXY_BASE")
-        .ok()
-        .and_then(|s| s.parse::<String>().ok());
+    let endpoint = std::env::var("OPENAI_ENDPOINT").unwrap_or_else(|_| panic!("OPENAI_ENDPOINT not set"));
 
     OPENAI_MODEL_NAME.set(model).unwrap();
-    OPENAI_CONTEXT_LIMIT.set(context_limit).unwrap();
-    OPENAI_PROXY_BASE.set(proxy_base).unwrap();
+    OPENAI_ENDPOINT.set(endpoint).unwrap();
 }
 
 pub fn get_config() -> RwLockReadGuard<'static, Config>{
@@ -111,18 +100,13 @@ pub fn get_config() -> RwLockReadGuard<'static, Config>{
 
 pub fn get_library_name() -> String {
     let config = CONFIG_INSTANCE.get().unwrap().read().unwrap();
-    let target = config.target.clone();
-    target
+    
+    config.target.clone()
 }
 
 pub fn get_sample_num() -> u8 {
     let config = CONFIG_INSTANCE.get().unwrap().read().unwrap();
     config.n_sample
-}
-
-pub fn get_handler_type() -> HandlerType {
-    let config = CONFIG_INSTANCE.get().unwrap().read().unwrap();
-    config.handler_type.clone()
 }
 
 pub fn get_minimize_compile_flag() -> &'static str {
@@ -152,18 +136,6 @@ pub fn parse_config() -> eyre::Result<()> {
     Ok(())
 }
 
-use clap::{Parser, ValueEnum};
-
-use crate::Deopt;
-
-/// Handler类型选择
-#[derive(Debug, Clone, ValueEnum, PartialEq)]
-pub enum HandlerType {
-    /// 使用OpenAI官方客户端
-    Openai,
-    /// 使用HTTP客户端
-    Http,
-}
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[command(author="Anonymous", name = "LLMFuzzer", version, about="A LLM based Fuzer", long_about = None)]
@@ -176,32 +148,35 @@ pub struct Config {
     /// Sampling temperature. Higher values means the model will take more risks. Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.
     #[arg(short, long, default_value = "0.9")]
     pub temperature: f32,
+    /// Whether to use the deepseek reasoning.
+    #[arg(long, default_value = "false")]
+    pub deepseek_reasoning: bool,
+    /// Whether to include all headers for parsing APIs.
+    #[arg(long, default_value = "false")]
+    pub include_all_headers: bool,
     /// whether use the power schedule to mutate prompt. true for purly random mutation of prompt.
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
     /// The number of successful programs should be generated for a prompt. Once satisfy, a round is finished.
     #[arg(long = "fr", default_value = "1")]
     pub fuzz_round_succ: usize,
-    /// How number of round without new coverage is considered as converge.
+    /// How number of round without new coverage is considered as converge. When the coverage reachs the converge, the fuzzing will stop. Set to 0 to disable the converge check.
     #[arg(long = "fc", default_value = "10")]
     pub fuzz_converge_round: usize,
     /// number of cores used to parallely run the fuzzers.
     #[arg(short, long, default_value = "1")]
     pub cores: usize,
-    /// The maximum of cpu cores used in the sanitization phase.
+    /// The maximum of cpu cores used in the sanitization phase. Excelerate the validation speed. Default is 0, which means the number of available cpu cores.
     #[arg(short, long, default_value = "0")]
     pub max_cores: usize,
     #[arg(short, long, default_value = "false")]
     pub exponent_branch: bool,
     /// Whether to recheck the seeds during the fuzz loop is a decision that is strongly recommended. Enabling this option can help reduce false positives, but it may come at the cost of increased execution time.
-    #[arg(short, long, default_value = "false")]
+    #[arg(short, long, default_value = "true")]
     pub recheck: bool,
     /// Run condensed fuzzers after the fuzz loop
     #[arg(long, default_value = "false")]
-    pub fuzzer_run: bool,
-    /// Select the handler type for LLM requests
-    #[arg(long = "handler", default_value = "openai")]
-    pub handler_type: HandlerType,
+    pub fuzzer_run: bool
 }
 
 impl Config {
@@ -210,6 +185,8 @@ impl Config {
             target: target.to_string(),
             n_sample: 10,
             temperature: 0.6,
+            deepseek_reasoning: false,
+            include_all_headers: false,
             cores: 10,
             max_cores: 0,
             fuzz_round_succ: 1,
@@ -218,12 +195,12 @@ impl Config {
             recheck: false,
             fuzzer_run: false,
             disable_power_schedule: false,
-            handler_type: HandlerType::Openai,
         };
         let _ = CONFIG_INSTANCE.set(RwLock::new(config));
         crate::init_debug_logger().unwrap();
     }
 }
+
 
 /// custom configuration of each project
 #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

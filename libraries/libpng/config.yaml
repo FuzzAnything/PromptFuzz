@@ -1,6 +1,6 @@
 project_name: libpng
-static_lib_name: libpng16.a
-dyn_lib_name: libpng16.so
+static_lib_name: libpng18.a
+dyn_lib_name: libpng18.so
 ban:
   ~
 extra_c_flags: 
