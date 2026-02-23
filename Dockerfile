@@ -19,10 +19,22 @@ RUN wget https://apt.llvm.org/llvm.sh \
     && ln -s /usr/bin/clang-18 /usr/bin/clang \
     && ln -s /usr/bin/clang++-18 /usr/bin/clang++
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && rustup default stable
+# Install Rust via proxy
+ENV RUSTUP_DIST_SERVER=https://rsproxy.cn
+ENV RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN mkdir -p $HOME/.cargo && \
+    echo '[source.crates-io]\n\
+replace-with = "rsproxy-sparse"\n\
+[source.rsproxy]\n\
+registry = "https://rsproxy.cn/crates.io-index"\n\
+[source.rsproxy-sparse]\n\
+registry = "sparse+https://rsproxy.cn/index/"\n\
+[net]\n\
+git-fetch-with-cli = true' > $HOME/.cargo/config.toml
 
 # Install Dependency for easier development
-RUN apt-get install -y tmux vim bubblewrap
 
 RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git && \
     ln -s -f .tmux/.tmux.conf && \
@@ -31,5 +43,7 @@ RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git &
     cd /tmp/pwndbg && \
     git submodule update --init --recursive && \
     ./setup.sh
+
+RUN apt-get install -y tmux vim bubblewrap bubblewrap rsync yasm
 
 WORKDIR /root/promptfuzz

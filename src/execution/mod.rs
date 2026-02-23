@@ -33,6 +33,64 @@ use std::{
 use threadpool::ThreadPool;
 use wait_timeout::ChildExt;
 
+/// Wrap a command with bubblewrap sandbox to isolate network access
+/// Returns true if bubblewrap was applied, false otherwise
+fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
+    binary: &Path,
+    extra_args: &Vec<S>,
+    extra_envs: &Vec<(S, S)>,
+    asan_options: &str,
+    fuzzer_args: &[String],
+) -> Command {
+
+    // Reset the command to use bwrap as the main executable
+    let mut cmd = Command::new("bwrap");
+    
+    
+    // Mount essential system directories as read-only
+    cmd.arg("--ro-bind").arg("/").arg("/");
+    cmd.arg("--proc").arg("/proc");
+    cmd.arg("--dev").arg("/dev");
+    cmd.arg("--tmpfs").arg("/tmp");
+
+
+    // Deny network access
+    cmd.arg("--unshare-net");
+    cmd.arg("--die-with-parent");
+    cmd.arg("--new-session");
+    
+    // Mount the working directory with read-write access
+    let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
+    cmd.arg("--bind").arg(&workspace_root).arg(&workspace_root);
+    
+    // Pass through environment variables
+    for (key, val) in extra_envs {
+        cmd.arg("--setenv")
+            .arg(key.as_ref())
+            .arg(val.as_ref());
+    }
+    
+    // Set ASAN_OPTIONS
+    cmd.arg("--setenv").arg("ASAN_OPTIONS").arg(asan_options);
+    cmd.arg("stdbuf").arg("-oL").arg("-eL");
+    
+    // Add the actual binary to execute
+    cmd.arg(binary);
+    
+    // Add fuzzer-specific arguments
+    for arg in fuzzer_args {
+        cmd.arg(arg);
+    }
+    
+    // Add extra arguments
+    for arg in extra_args {
+        cmd.arg(arg.as_ref());
+    }
+    
+    log::debug!("Running with bubblewrap sandbox: {:?}", cmd);
+    return cmd;
+}
+
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum Compile {
     SANITIZE,
@@ -133,15 +191,6 @@ impl Executor {
         stderr: Option<Stdio>,
         enough_timeout: bool,
     ) -> Child {
-        let mut exec = Command::new(binary);
-        for arg in &extra_args {
-            exec.arg(arg);
-        }
-
-        for (key, val) in &extra_envs {
-            exec.env(key, val);
-        }
-
         let asan_options = self.deopt.get_asan_options();
         let rss_limit = format!(
             "-rss_limit_mb={}",
@@ -155,12 +204,24 @@ impl Executor {
             crate::config::EXECUTION_TIMEOUT
         };
 
-        let child = exec
+        // Prepare fuzzer arguments
+        let fuzzer_args = vec![
+            rss_limit,
+            format!("-timeout={}", timeout),
+            "-close_fd_mask=3".to_string(),
+        ];
+
+        // Try to wrap with bubblewrap for network isolation
+        let mut cmd = wrap_command_with_bubblewrap(
+            binary,
+            &extra_args,
+            &extra_envs,
+            &asan_options,
+            &fuzzer_args,
+        );
+
+        let child = cmd
             .current_dir(current_dir)
-            .env("ASAN_OPTIONS", asan_options)
-            .arg(rss_limit)
-            .arg(format!("-timeout={}", timeout))
-            .arg("-close_fd_mask=3")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(stderr)
