@@ -27,6 +27,7 @@ pub struct TokenUsage {
     pub prompt_tokens: u32,
     pub completion_tokens: u32,
     pub total_tokens: u32,
+    pub cached_tokens: u32,
 }
 
 impl TokenUsage {
@@ -35,15 +36,22 @@ impl TokenUsage {
             prompt_tokens,
             completion_tokens,
             total_tokens,
+            cached_tokens: 0,
         }
     }
     
     pub fn from_response(response: &CreateChatCompletionResponse) -> Self {
         if let Some(usage) = &response.usage {
+            let cached_tokens = if let Some(details) = &usage.prompt_tokens_details {
+                details.cached_tokens.unwrap_or(0)
+            } else {
+                0
+            };
             Self {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens,
                 total_tokens: usage.total_tokens,
+                cached_tokens,
             }
         } else {
             Self::default()
@@ -51,10 +59,26 @@ impl TokenUsage {
     }
 
     pub fn from_raw_response(response: &Value) -> Self {
+        let usage = response.get("usage").and_then(|v| v.as_object());
+
+        let cached_tokens = usage
+            .and_then(|u| u.get("prompt_tokens_details"))
+            .and_then(|d| d.get("cached_tokens"))
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+
+
+        let get_u32 = |key: &str| {
+            usage.and_then(|u| u.get(key))
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0) as u32
+        };
+
         Self {
-            prompt_tokens: response["usage"]["prompt_tokens"].as_u64().unwrap_or(0) as u32,
-            completion_tokens: response["usage"]["completion_tokens"].as_u64().unwrap_or(0) as u32,
-            total_tokens: response["usage"]["total_tokens"].as_u64().unwrap_or(0) as u32,
+            prompt_tokens: get_u32("prompt_tokens"),
+            completion_tokens: get_u32("completion_tokens"),
+            total_tokens: get_u32("total_tokens"),
+            cached_tokens,
         }
     }
     
@@ -62,6 +86,7 @@ impl TokenUsage {
         self.prompt_tokens += other.prompt_tokens;
         self.completion_tokens += other.completion_tokens;
         self.total_tokens += other.total_tokens;
+        self.cached_tokens += other.cached_tokens;
     }
 }
 
@@ -96,17 +121,19 @@ impl Handler for OpenAIHanler {
         let mut total_usage = TokenUsage::default();
         
         for result in results {
-            let (program, usage) = result?;
-            programs.push(program);
-            total_usage.add(&usage);
+            if let Ok((program, usage)) = result {
+                programs.push(program);
+                total_usage.add(&usage);
+            }
         }
         
         let elapsed = start.elapsed();
         log::info!("OpenAI Generate time: {}s", elapsed.as_secs());
-        log::info!("OpenAI Token Usage - Prompt: {}, Completion: {}, Total: {}", 
+        log::info!("Response Tokens\nCompletion Tokens: {}\nPrompt Tokens: {}\nTotal Tokens: {}\nCached Tokens: {}", 
+                  total_usage.completion_tokens,
                   total_usage.prompt_tokens, 
-                  total_usage.completion_tokens, 
-                  total_usage.total_tokens);
+                  total_usage.total_tokens,
+                  total_usage.cached_tokens);
         
         Ok(programs)
     }
@@ -252,14 +279,14 @@ pub async fn generate_program_by_chat(
         let request = create_reasoning_chat_request(chat_msgs, None)?;
         let response = get_reasoning_chat_response(request).await?;
         let usage = TokenUsage::from_raw_response(&response);
-        let content = response["choices"][0]["message"]["content"].as_str().unwrap().to_string();
+        let content = response["choices"][0]["message"]["content"].as_str().ok_or(eyre::eyre!("Empty response content"))?.to_string();
         (content, usage)
     } else {
         let request = create_chat_request(chat_msgs, None)?;
         let respond = get_chat_response(request).await?;
         let usage = TokenUsage::from_response(&respond);
         let choice = respond.choices.first().unwrap();
-        let content = choice.message.content.as_ref().unwrap().to_string();
+        let content = choice.message.content.as_ref().ok_or(eyre::eyre!("Empty response content"))?.to_string();
         (content, usage)
     };
     let content = strip_code_wrapper(&content);
