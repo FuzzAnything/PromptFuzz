@@ -87,7 +87,7 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
         cmd.arg(arg.as_ref());
     }
     
-    log::debug!("Running with bubblewrap sandbox: {:?}", cmd);
+    log::trace!("Running with bubblewrap sandbox: {:?}", cmd);
     return cmd;
 }
 
