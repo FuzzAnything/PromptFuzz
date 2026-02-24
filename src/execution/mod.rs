@@ -4,6 +4,7 @@ pub mod sanitize;
 
 use self::logger::ProgramError;
 use crate::config::{get_config, get_minimize_compile_flag};
+use crate::deopt::utils;
 use crate::program::libfuzzer::respawn_libfuzzer_process;
 use crate::program::transform::Transformer;
 use crate::{
@@ -60,8 +61,8 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
     cmd.arg("--new-session");
     
     // Mount the working directory with read-write access
-    let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
-    cmd.arg("--bind").arg(&workspace_root).arg(&workspace_root);
+    //let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
+    cmd.arg("--bind").arg("/").arg("/");
     
     // Pass through environment variables
     for (key, val) in extra_envs {
@@ -219,7 +220,13 @@ impl Executor {
             &asan_options,
             &fuzzer_args,
         );
+        
+        let program = cmd.get_program().to_string_lossy();
+        let args: Vec<String> = cmd.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
 
+        let full_cmd_string = format!("{} {}", program, args.join(" "));
+        log::trace!("Raw shell string: {}", full_cmd_string);
+        
         let child = cmd
             .current_dir(current_dir)
             .stdin(Stdio::null())
@@ -481,6 +488,9 @@ impl Executor {
         }
 
         self.execute_cov_fuzzer_pool(fuzzer_binary, corpus_dir, &profdata)?;
+        if !profdata.exists() {
+            eyre::bail!("Failed to generate profdata file: {profdata:?}");
+        }
 
         let cov = self.obtain_cov_from_profdata(&profdata)?;
         if let Some(fuzzer_code) = fuzzer_code {
@@ -519,6 +529,11 @@ impl Executor {
         corpus: &Path,
         control_file: &Path,
     ) -> Result<()> {
+        if utils::is_dir_empty(corpus)? {
+            log::warn!("Corpus {corpus:?} is empty, skip minimizing by control file.");
+            return Ok(());
+        }
+
         let work_dir = get_file_dirname(fuzzer_binary);
         let minimize_dir: PathBuf = [work_dir, "temp_minimize".into()].iter().collect();
         crate::deopt::utils::create_dir_if_nonexist(&minimize_dir)?;
@@ -532,7 +547,7 @@ impl Executor {
             minimize_dir.as_os_str(),
             corpus.as_os_str(),
         ];
-        let child = self.spawn(fuzzer_binary, extra_args, vec![], None, None, false);
+        let child = self.spawn(fuzzer_binary, extra_args, vec![], None, Some(Stdio::inherit()), false);
         let output = child.wait_with_output()?;
         if !output.status.success() {
             eyre::bail!("Fail to merge corpus in {fuzzer_binary:?}")
