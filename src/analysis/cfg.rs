@@ -671,6 +671,7 @@ impl CFGBuilder {
                 | ast::Clang::CharacterLiteral(_)
                 | ast::Clang::StringLiteral(_)
                 | ast::Clang::GNUNullExpr(_)
+                | ast::Clang::MemberExpr(_)
                 | ast::Clang::CXXNullPtrLiteralExpr(_) => {
                     block.borrow_mut().append_stmt(curr.clone());
                 }
