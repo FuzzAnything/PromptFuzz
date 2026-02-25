@@ -367,9 +367,9 @@ pub mod utils {
                 }
             }
             if file.is_dir() {
-                std::fs::remove_dir_all(file)?;
+                let _ = std::fs::remove_dir_all(file);
             } else {
-                std::fs::remove_file(file)?
+                let _ = std::fs::remove_file(file);
             }
         }
         Ok(())
