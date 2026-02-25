@@ -8,7 +8,7 @@ ENV PATH=/lib/llvm-18/bin:/usr/local/cargo/bin:/root/.cargo/bin:$PATH \
     DOCKER_CONTAINER=1
 
 RUN apt-get update \
-    && apt-get -y install build-essential wget curl cmake git unzip patchelf graphviz python3 python3-pip lsb-release bison flex software-properties-common gnupg file libtool binutils autoconf libssl-dev openssl pkg-config libfontconfig libfontconfig1-dev zip libpsl-dev libbrotli-dev \
+    && apt-get -y install build-essential wget curl cmake git unzip patchelf graphviz python3 python3-pip lsb-release bison flex software-properties-common gnupg file libtool binutils autoconf libssl-dev openssl pkg-config libfontconfig libfontconfig1-dev zip libpsl-dev libbrotli-dev libcurl4 tcl \
     && apt-get clean \
     && pip3 install wllvm
 

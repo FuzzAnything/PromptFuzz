@@ -1,0 +1,3 @@
+project_name: liblouis
+static_lib_name: liblouis.a
+dyn_lib_name: liblouis.so
