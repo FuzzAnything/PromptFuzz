@@ -322,6 +322,10 @@ pub mod utils {
     use super::*;
 
     pub fn print_san_cost(program_paths: &Vec<PathBuf>) -> Result<()> {
+        if program_paths.is_empty() {
+            return Ok(());
+        }
+
         let mut max_time = 0_f32;
         let mut usage = Vec::new();
         for program_path in program_paths {
@@ -367,9 +371,9 @@ pub mod utils {
                 }
             }
             if file.is_dir() {
-                std::fs::remove_dir_all(file)?;
+                let _ = std::fs::remove_dir_all(file);
             } else {
-                std::fs::remove_file(file)?
+                let _ = std::fs::remove_file(file);
             }
         }
         Ok(())

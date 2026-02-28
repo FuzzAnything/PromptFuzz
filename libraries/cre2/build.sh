@@ -14,44 +14,35 @@ function download() {
     if [[ ! -z "${DOCKER_CONTAINER:-}" ]]; then
         apt-get update &&
             apt-get -y upgrade &&
-            apt-get -y install pkg-config file cmake autoconf automake texinfo libtool &&
+            apt-get -y install pkg-config file cmake autoconf automake texinfo libtool libabsl-dev &&
             apt-get clean
     fi
-
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/re2.tar.gz re2.tar.gz
-        tar -xvf re2.tar.gz && rm re2.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/abseil-cpp.tar.gz abseil-cpp.tar.gz
-        tar -xvf abseil-cpp.tar.gz && rm abseil-cpp.tar.gz
-    else
-        mkdir ${PROJECT_NAME}
-        git clone --depth 1 https://github.com/PromptFuzz/cre2
-        git clone --depth 1 https://github.com/google/re2.git
-        git clone --depth=1 https://github.com/abseil/abseil-cpp
-    fi
-}
 
-function build_absl() {
-    pushd $SRC/abseil-cpp
-    #For ABSL, we must built it with the same flags passed to fuzzers. ABI mismatch: https://github.com/abseil/abseil-cpp/issues/1524
-    rm -rf build
-    mkdir -p build && cd build
-    cmake -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_INSTALL_PREFIX=$INSTALLDIR -DCMAKE_INSTALL_LIBDIR=$INSTALLDIR/lib .. && make -j$(nproc) && make install    
-    popd
+    git clone --depth 1 https://github.com/PromptFuzz/cre2
+    git clone --depth 1 https://github.com/google/re2.git
+    sed -i '1i #include <cstring>' $SRC/cre2/src/cre2.cpp
+
+    git clone --depth 1 https://github.com/abseil/abseil-cpp.git
+    cd abseil-cpp
+    mkdir build && cd build
+
+    cmake .. \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DABSL_ENABLE_INSTALL=ON \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON --trace-expand
+
+    make -j$(nproc)
+    make install
 }
 
 function build_lib() {
     export INSTALLDIR=$WORK
-    mkdir -p $WORKw
+    mkdir -p $WORK
     LIB_STORE_DIR=$INSTALLDIR/lib
-    rm $INSTALLDIR/lib
+    rm -rf $INSTALLDIR/lib
 
-    export PKG_CONFIG_PATH=$INSTALLDIR/lib/pkgconfig
-    #build absl
-    build_absl
+    export PKG_CONFIG_PATH=$INSTALLDIR/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
 
     # build re2
     pushd $SRC/re2
@@ -64,7 +55,7 @@ function build_lib() {
     pushd $SRC/cre2
     ./autogen.sh
     # build cre2
-    info "build cre2"
+    print "build cre2"
     rm -rf build
     mkdir build
     cd build
@@ -77,15 +68,16 @@ function build_lib() {
     ar -x libre2.a
     ar -x libcre2.a
     mkdir -p absl_obj 
-    mv libabsl*.a absl_obj
-    pushd absl_obj
-    for FILE in $(ls libabsl*.a)
-    do
-        ar -x $FILE
-    done
-    popd
+    #mv libabsl*.a absl_obj
+    #pushd absl_obj
+    #for FILE in $(ls libabsl*.a)
+    #do
+    #    ar -x $FILE
+    #done
+    #popd
     rm libcre2.a
-    ar -rcs libcre2.a *.o absl_obj/*.o
+    #ar -rcs libcre2.a *.o absl_obj/*.o
+    ar -rcs libcre2.a *.o
     ${CXX:-g++} ${CXXFLAGS} -fPIC --shared -o libcre2.so *.o
     rm *.o
     popd

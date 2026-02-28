@@ -8,7 +8,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{deopt::utils::get_file_dirname, feedback::observer::Observer};
+use crate::{deopt::utils::get_file_dirname, deopt::utils::is_dir_empty,feedback::observer::Observer};
 use crate::{execution::Executor, program::serde::Deserializer};
 
 use super::branches::{parse_branch, Branch};
@@ -291,10 +291,15 @@ impl GlobalFeature {
         let mut gf = Self::default();
 
         let work_dir = get_file_dirname(fuzzer);
+        let shared_corpus = executor.deopt.get_library_shared_corpus_dir()?;
+        if is_dir_empty(&shared_corpus)? {
+            return Ok(gf)
+        }
+
         let control_file: PathBuf = [work_dir, "merge_control_file".into()].iter().collect();
         executor.minimize_by_control_file(
             fuzzer,
-            &executor.deopt.get_library_shared_corpus_dir()?,
+            &shared_corpus,
             &control_file,
         )?;
         if !control_file.exists() {
@@ -377,6 +382,10 @@ impl Executor {
     }
 
     pub fn merge_profdata(profraw_files: &Vec<PathBuf>, profdata: &Path) -> Result<()> {
+        if profraw_files.is_empty() {
+            log::warn!("profraw_files is empty, skip merging profdata.");
+            return Ok(())
+        }
         let mut output = Command::new("llvm-profdata");
         let cmd = output.arg("merge").arg("-sparse");
         for prof_file in profraw_files {

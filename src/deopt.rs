@@ -646,6 +646,10 @@ pub mod utils {
         Ok(entries)
     }
 
+    pub fn is_dir_empty(dir: &Path) -> Result<bool> {
+        read_sort_dir(dir).map(|entries| entries.is_empty())
+    }
+
     /// format the headers of this library that should include as a single String.
     pub fn format_library_header_strings(deopt: &Deopt) -> &'static str {
         static HEADER: OnceCell<String> = OnceCell::new();
