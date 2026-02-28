@@ -124,6 +124,10 @@ impl Fuzzer {
 
         while succ_programs.len() < get_config().fuzz_round_succ {
             let mut programs = self.handler.generate(prompt)?;
+            if programs.is_empty() {
+                log::warn!("LLM did not generate any program, retrying...");
+                continue;
+            }
             for program in &mut programs {
                 program.id = self.deopt.inc_seed_id();
             }
