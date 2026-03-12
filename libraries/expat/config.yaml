@@ -1,0 +1,3 @@
+project_name: expat
+static_lib_name: libexpat.a
+dyn_lib_name: libexpat.so
