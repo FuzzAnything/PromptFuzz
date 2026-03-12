@@ -10,12 +10,8 @@ DIR=$(pwd)
 
 function download() {
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/cJSON.tar.gz cJSON.tar.gz
-        tar -xvf cJSON.tar.gz && rm cJSON.tar.gz
-    else
-        git clone --depth 1 https://github.com/DaveGamble/cJSON.git
-    fi
+
+    git clone --depth 1 https://github.com/DaveGamble/cJSON.git
     mv cJSON $PROJECT_NAME
 }
 
