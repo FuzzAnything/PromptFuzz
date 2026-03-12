@@ -157,6 +157,9 @@ pub struct Config {
     /// whether use the power schedule to mutate prompt. true for purly random mutation of prompt.
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
+    /// whether disable the coverage validation for generated harnesses. 
+    #[arg( long = "disable-coverage-validation", default_value = "false")]
+    pub disable_coverage_check: bool,
     /// The number of successful programs should be generated for a prompt. Once satisfy, a round is finished.
     #[arg(long = "fr", default_value = "1")]
     pub fuzz_round_succ: usize,
@@ -166,8 +169,8 @@ pub struct Config {
     /// number of cores used to parallely run the fuzzers.
     #[arg(short, long, default_value = "1")]
     pub cores: usize,
-    /// The maximum of cpu cores used in the sanitization phase. Excelerate the validation speed. Default is 0, which means the number of available cpu cores.
-    #[arg(short, long, default_value = "0")]
+    /// The maximum of cpu cores used in the sanitization phase. Excelerate the validation speed. The value 0 means the number of available cpu cores.
+    #[arg(short, long, default_value = "10")]
     pub max_cores: usize,
     #[arg(short, long, default_value = "false")]
     pub exponent_branch: bool,
@@ -195,6 +198,7 @@ impl Config {
             recheck: false,
             fuzzer_run: false,
             disable_power_schedule: false,
+            disable_coverage_check: false,
         };
         let _ = CONFIG_INSTANCE.set(RwLock::new(config));
         crate::init_debug_logger().unwrap();

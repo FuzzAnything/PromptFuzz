@@ -1,4 +1,4 @@
-project_name: QuickJS
+project_name: quickjs
 static_lib_name: libquickjs.a
 dyn_lib_name: libquickjs.so
 ban:

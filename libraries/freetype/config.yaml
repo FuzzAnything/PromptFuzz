@@ -1,4 +1,4 @@
-project_name: FreeType
+project_name: freetype
 static_lib_name: libfreetype.a
 dyn_lib_name: libfreetype.so
 # Link zlib (required by FreeType when built with --with-zlib=yes)

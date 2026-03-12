@@ -1,12 +1,7 @@
 use crate::{
-    config::get_library_name,
-    deopt::utils::get_file_dirname,
-    feedback::clang_coverage::{
-        utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage},
-        CorporaFeatures, GlobalFeature,
-    },
-    program::{serde::Serialize, transform::Transformer, Program},
-    Deopt,
+    Deopt, config::{get_config, get_library_name}, deopt::utils::get_file_dirname, feedback::clang_coverage::{
+        CorporaFeatures, GlobalFeature, utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage}
+    }, program::{Program, serde::Serialize, transform::Transformer}
 };
 use eyre::Result;
 use std::{
@@ -122,7 +117,11 @@ impl Executor {
         )?;
 
         // Sanitize the fuzzer by its reached lines
-        let has_err = sanitize_by_fuzzer_coverage(program_path, &self.deopt, &coverage)?;
+        let has_err = if get_config().disable_coverage_check {
+            false
+        } else {
+            sanitize_by_fuzzer_coverage(program_path, &self.deopt, &coverage)?
+        };
         time_logger.log("coverage")?;
         self.evolve_corpus(program_path)?;
         // remove the profraw dir to avoid the huge disk cost.

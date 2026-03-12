@@ -2,43 +2,33 @@
 
 source ../common.sh
 
-PROJECT_NAME=libYAML
+PROJECT_NAME=libyaml
 STALIB_NAME=libyaml.a
 DYNLIB_NAME=libyaml.so
 DIR=$(pwd)
 
 function download() {
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-    else
-        git clone --depth 1 https://github.com/yaml/libyaml.git
-    fi
-    # keep source dir as libyaml (repo name)
-    [ -d libyaml ] && true
+    git clone --depth 1 https://github.com/yaml/libyaml.git
 }
 
 function build_lib() {
-    LIB_STORE_DIR=$WORK/build
-    rm -rf ${LIB_STORE_DIR}
-    mkdir -p ${LIB_STORE_DIR}
-    cd $LIB_STORE_DIR
+    BUILD_DIR=$WORK/build
+    rm -rf ${BUILD_DIR}
+    mkdir -p ${BUILD_DIR}
+    cd $BUILD_DIR
 
     # Build static lib first
     cmake $SRC/libyaml \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_FLAGS="${CFLAGS:-} -O3 -g -fPIC" \
         -DBUILD_SHARED_LIBS=OFF
     make -j$(nproc)
 
     # Build shared lib
     cmake $SRC/libyaml -DBUILD_SHARED_LIBS=ON
     make -j$(nproc)
+    LIB_STORE_DIR=$BUILD_DIR
 
-    # common.sh expects .a and .so in LIB_STORE_DIR (cmake may put in . or lib/)
-    if [ -f lib/libyaml.a ]; then cp lib/libyaml.a .; fi
-    if [ -f lib/libyaml.so ]; then cp lib/libyaml.so .; fi
 }
 
 function copy_include() {

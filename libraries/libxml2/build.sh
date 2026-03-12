@@ -20,13 +20,13 @@ function download() {
 }
 
 function build_lib() {
-    LIB_STORE_DIR=$WORK/build
-    rm -rf $LIB_STORE_DIR
-    mkdir -p $LIB_STORE_DIR
+    BUILD_DIR=$WORK/build
+    rm -rf $BUILD_DIR
+    mkdir -p $BUILD_DIR
     cd $SRC/${PROJECT_NAME}
     ./autogen.sh
     ./configure \
-        --prefix="$LIB_STORE_DIR" \
+        --prefix="$BUILD_DIR" \
         --enable-static \
         --enable-shared \
         --without-python \
@@ -34,34 +34,15 @@ function build_lib() {
         --without-lzma \
         --with-zlib=yes \
         --with-http=no \
-        --with-ftp=no \
-        CFLAGS="-O3 -g -fPIC -D_GNU_SOURCE"
+        --with-ftp=no 
     make -j$(nproc)
     make install
-    LIB_STORE_DIR=$WORK/build/lib
-    cd $LIB_STORE_DIR
-    [ -f libxml2.so ] || ln -sf libxml2.so.2 libxml2.so 2>/dev/null || true
+    LIB_STORE_DIR=$BUILD_DIR/lib
+   
 }
 
 function build_oss_fuzz() {
-    cd $LIB_STORE_DIR
-    cat > $WORK/libxml2_fuzzer.cc << 'EOF'
-#include <libxml/parser.h>
-#include <stddef.h>
-#include <stdint.h>
-
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    if (size == 0) return 0;
-    xmlDocPtr doc = xmlReadMemory((const char *)data, size, NULL, NULL, 0);
-    if (doc) xmlFreeDoc(doc);
-    xmlCleanupParser();
-    return 0;
-}
-EOF
-    $CXX $CXXFLAGS -std=c++11 \
-        -I$LIB_STORE_DIR/../include/libxml2 \
-        $WORK/libxml2_fuzzer.cc -o $OUT/libxml2_fuzzer \
-        $LIB_FUZZING_ENGINE $LIB_STORE_DIR/libxml2.a -lz -lm
+    pwd
 }
 
 function copy_include() {
