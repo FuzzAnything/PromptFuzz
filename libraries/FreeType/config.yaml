@@ -1,0 +1,9 @@
+project_name: FreeType
+static_lib_name: libfreetype.a
+dyn_lib_name: libfreetype.so
+# Link zlib (required by FreeType when built with --with-zlib=yes)
+extra_c_flags:
+  - "-lz"
+# Ban functions with unsupported param types (e.g. macro-sized array FT_Bytes tables[FT_VALIDATE_GX_LENGTH])
+ban:
+  - FT_TrueTypeGX_Validate

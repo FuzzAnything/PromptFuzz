@@ -1,0 +1,4 @@
+project_name: LibPSL
+static_lib_name: libpsl.a
+dyn_lib_name: libpsl.so
+landmark: true

@@ -1,0 +1,3 @@
+project_name: zstd
+static_lib_name: libzstd.a
+dyn_lib_name: libzstd.so
