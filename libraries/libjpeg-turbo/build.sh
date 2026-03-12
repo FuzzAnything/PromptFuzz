@@ -13,15 +13,12 @@ function download() {
         apt-get update && apt-get install -y cmake yasm wget zip
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-    else
-        git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
-        git clone --depth 1 https://github.com/libjpeg-turbo/seed-corpora
-        mv libjpeg-turbo ${PROJECT_NAME}
-        mv seed-corpora ${PROJECT_NAME}
-    fi
+
+    git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+    git clone --depth 1 https://github.com/libjpeg-turbo/seed-corpora
+    mv libjpeg-turbo ${PROJECT_NAME}
+    mv seed-corpora ${PROJECT_NAME}
+    
 }
 
 function build_lib() {

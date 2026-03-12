@@ -9,14 +9,9 @@ DIR=$(pwd)
 
 function download() {
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/libxml2.tar.gz libxml2.tar.gz
-        tar -xvf libxml2.tar.gz && rm libxml2.tar.gz
-    else
-        git clone --depth 1 https://gitlab.gnome.org/GNOME/libxml2.git
-    fi
-    # clone already creates directory "libxml2", same as PROJECT_NAME; no need to mv
-    [ -d "${PROJECT_NAME}" ] || mv libxml2 ${PROJECT_NAME}
+
+    git clone --depth 1 https://gitlab.gnome.org/GNOME/libxml2.git
+    
 }
 
 function build_lib() {

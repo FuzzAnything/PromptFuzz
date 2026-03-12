@@ -26,24 +26,15 @@ function download() {
     fi
 
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/curl-fuzzer.tar.gz curl-fuzzer.tar.gz
-        tar -xvf curl-fuzzer.tar.gz && rm curl-fuzzer.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/nghttp2.tar.gz nghttp2.tar.gz
-        tar -xvf nghttp2.tar.gz && rm nghttp2.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/zstd.tar.gz zstd.tar.gz
-        tar -xvf zstd.tar.gz && rm zstd.tar.gz
-    else
-        mkdir ${PROJECT_NAME}
-        git clone --depth 1 https://github.com/curl/curl.git
-        git clone --depth 1 https://github.com/nghttp2/nghttp2
-        git clone --depth 1 https://github.com/madler/zlib.git
-        git clone --depth 1 https://github.com/openssl/openssl
-        git clone --depth 1 https://github.com/curl/curl-fuzzer.git
-        git clone --depth 1 https://github.com/facebook/zstd.git
-    fi
+
+    mkdir ${PROJECT_NAME}
+    git clone --depth 1 https://github.com/curl/curl.git
+    git clone --depth 1 https://github.com/nghttp2/nghttp2
+    git clone --depth 1 https://github.com/madler/zlib.git
+    git clone --depth 1 https://github.com/openssl/openssl
+    git clone --depth 1 https://github.com/curl/curl-fuzzer.git
+    git clone --depth 1 https://github.com/facebook/zstd.git
+
 }
 
 function build_zlib() {

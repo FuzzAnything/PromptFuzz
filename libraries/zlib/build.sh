@@ -12,24 +12,21 @@ function download() {
     fi
 
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-    else
-        git clone --depth 1 -b develop https://github.com/madler/zlib.git
-        pushd zlib
 
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/checksum_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/compress_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_dict_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_flush_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_large_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_small_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/minigzip_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/zlib_uncompress2_fuzzer.cc
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/zlib_uncompress_fuzzer.cc
-        popd
-    fi
+    git clone --depth 1 -b develop https://github.com/madler/zlib.git
+    pushd zlib
+
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/checksum_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/compress_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_dict_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_flush_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_large_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/example_small_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/minigzip_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/zlib_uncompress2_fuzzer.cc
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/zlib/zlib_uncompress_fuzzer.cc
+    popd
+
     # Avoid the permission issue in /tmp/
     sed -i 's|/tmp/minigzip_fuzzer.out|minigzip_fuzzer.out|g' zlib/minigzip_fuzzer.c
     sed -i 's|/tmp/minigzip_fuzzer.out.gz|minigzip_fuzzer.out.gz|g' zlib/minigzip_fuzzer.c

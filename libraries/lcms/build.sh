@@ -13,21 +13,18 @@ function download() {
         apt-get update && apt-get install -y make autoconf automake libtool
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/Little-CMS.tar.gz Little-CMS.tar.gz
-        tar -xvf Little-CMS.tar.gz && rm Little-CMS.tar.gz
-    else
-        git clone --depth 1 https://github.com/mm2/Little-CMS.git
-        pushd Little-CMS
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cmsIT8_load_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_overwrite_transform_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_all_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_profile_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_universal_transform_fuzzer.c
-        wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_extended_fuzzer.c
-        popd
-    fi
+
+    git clone --depth 1 https://github.com/mm2/Little-CMS.git
+    pushd Little-CMS
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cmsIT8_load_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_overwrite_transform_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_all_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_profile_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_universal_transform_fuzzer.c
+    wget https://raw.githubusercontent.com/google/oss-fuzz/master/projects/lcms/cms_transform_extended_fuzzer.c
+    popd
+
     mv Little-CMS ${PROJECT_NAME}
     SRC=$SRC/$PROJECT_NAME
 }

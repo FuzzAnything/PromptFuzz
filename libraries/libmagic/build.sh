@@ -14,29 +14,20 @@ function download() {
         apt-get update && apt install -y libbz2-dev      liblzma-dev      zlib1g-dev      libzstd-dev      liblz4-dev
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/file.tar.gz file.tar.gz
-        tar -xvf file.tar.gz && rm file.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/zstd.tar.gz zstd.tar.gz
-        tar -xvf zstd.tar.gz && rm zstd.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/lz4.tar.gz lz4.tar.gz
-        tar -xvf lz4.tar.gz && rm lz4.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/bzip2.tar.gz bzip2.tar.gz
-        tar -xvf bzip2.tar.gz && rm bzip2.tar.gz
-    else
-        git clone --depth 1 https://github.com/file/file.git
-        git clone --depth 1 https://github.com/facebook/zstd.git
-        git clone --depth 1 https://github.com/lz4/lz4.git
-        git clone --depth 1 https://github.com/libarchive/bzip2.git
-        pushd file
-        git clone --depth 1 https://github.com/DavidKorczynski/binary-samples.git
-        git clone --depth 1 https://github.com/corkami/pocs
-        wget https://github.com/google/oss-fuzz/raw/master/projects/file/fuzzer_temp_file.h
-        wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer.cc
-        wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer_loaddb.cc
-        wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer_fd.cc
-        popd
-    fi
+
+    git clone --depth 1 https://github.com/file/file.git
+    git clone --depth 1 https://github.com/facebook/zstd.git
+    git clone --depth 1 https://github.com/lz4/lz4.git
+    git clone --depth 1 https://github.com/libarchive/bzip2.git
+    pushd file
+    git clone --depth 1 https://github.com/DavidKorczynski/binary-samples.git
+    git clone --depth 1 https://github.com/corkami/pocs
+    wget https://github.com/google/oss-fuzz/raw/master/projects/file/fuzzer_temp_file.h
+    wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer.cc
+    wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer_loaddb.cc
+    wget https://github.com/google/oss-fuzz/raw/master/projects/file/magic_fuzzer_fd.cc
+    popd
+
     # fix undefined strdup in magic_fuzzer
     sed -i '1s/^/\#include<string.h>\n/' $SRC/file/magic_fuzzer.cc
     sed -i 's/\bexit(/_exit(/g' $SRC/file/src/*

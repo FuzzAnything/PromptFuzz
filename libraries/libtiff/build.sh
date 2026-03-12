@@ -17,30 +17,15 @@ function download() {
             apt-get clean
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        DOWNLOAD_PROJECT=$PROJECT_NAME
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${DOWNLOAD_PROJECT}.tar.gz ${DOWNLOAD_PROJECT}.tar.gz
-        tar -xvf ${DOWNLOAD_PROJECT}.tar.gz && rm ${DOWNLOAD_PROJECT}.tar.gz
-        DOWNLOAD_PROJECT=zlib
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${DOWNLOAD_PROJECT}.tar.gz ${DOWNLOAD_PROJECT}.tar.gz
-        tar -xvf ${DOWNLOAD_PROJECT}.tar.gz && rm ${DOWNLOAD_PROJECT}.tar.gz
-        DOWNLOAD_PROJECT=libjpeg-turbo
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${DOWNLOAD_PROJECT}.tar.gz ${DOWNLOAD_PROJECT}.tar.gz
-        tar -xvf ${DOWNLOAD_PROJECT}.tar.gz && rm ${DOWNLOAD_PROJECT}.tar.gz
-        DOWNLOAD_PROJECT=jbigkit
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${DOWNLOAD_PROJECT}.tar.gz ${DOWNLOAD_PROJECT}.tar.gz
-        tar -xvf ${DOWNLOAD_PROJECT}.tar.gz && rm ${DOWNLOAD_PROJECT}.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/zstd.tar.gz zstd.tar.gz
-        tar -xvf zstd.tar.gz && rm zstd.tar.gz
-    else
-        git clone --depth 1 https://gitlab.com/libtiff/libtiff
-        git clone --depth 1 https://github.com/madler/zlib
-        git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo
-        git clone https://www.cl.cam.ac.uk/~mgk25/git/jbigkit
-        git clone --depth 1 https://github.com/facebook/zstd.git
-        wget https://raw.githubusercontent.com/google/AFL/debe27037b9444bbf090a0ffbd5d24889bb887ae/dictionaries/tiff.dict
-        cp tiff.dict ${PROJECT_NAME}/tiff.dict
-    fi
+
+    git clone --depth 1 https://gitlab.com/libtiff/libtiff
+    git clone --depth 1 https://github.com/madler/zlib
+    git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo
+    git clone https://www.cl.cam.ac.uk/~mgk25/git/jbigkit
+    git clone --depth 1 https://github.com/facebook/zstd.git
+    wget https://raw.githubusercontent.com/google/AFL/debe27037b9444bbf090a0ffbd5d24889bb887ae/dictionaries/tiff.dict
+    cp tiff.dict ${PROJECT_NAME}/tiff.dict
+
     sed -i 's/TIFF \*TIFFOpen(const char \*, const char \*);/TIFF \*TIFFOpen(const char \*filename, const char \*mode);/g' $SRC/$PROJECT_NAME/$PROJECT_NAME/tiffio.h
     sed -i 's/TIFF \*TIFFOpenExt(const char \*, const char \*, TIFFOpenOptions \*opts)/TIFF \*TIFFOpenExt(const char \*filename, const char \*mode, TIFFOpenOptions \*opts)/g' $SRC/$PROJECT_NAME/$PROJECT_NAME/tiffio.h
     sed -i 's/TIFF \*TIFFFdOpen(int, const char \*, const char \*)/TIFF \*TIFFFdOpen(int ifd, const char \*filename, const char \*mode)/g' $SRC/$PROJECT_NAME/$PROJECT_NAME/tiffio.h

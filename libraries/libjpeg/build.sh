@@ -13,15 +13,12 @@ function download() {
         apt-get update && apt-get install -y cmake yasm wget
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/libjpeg-turbo.tar.gz libjpeg-turbo.tar.gz
-        tar -xvf libjpeg-turbo.tar.gz && rm libjpeg-turbo.tar.gz && mv libjpeg-turbo libjpeg
-    else
-        git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
-        git clone --depth 1 https://github.com/libjpeg-turbo/seed-corpora
-        mv libjpeg-turbo libjpeg
-        mv seed-corpora libjpeg
-    fi
+
+    git clone --depth 1 https://github.com/libjpeg-turbo/libjpeg-turbo.git
+    git clone --depth 1 https://github.com/libjpeg-turbo/seed-corpora
+    mv libjpeg-turbo libjpeg
+    mv seed-corpora libjpeg
+    
 }
 
 function build_lib() {

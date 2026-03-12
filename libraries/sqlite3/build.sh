@@ -14,12 +14,8 @@ function download() {
     fi
 
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/sqlite3.tar.gz sqlite3.tar.gz
-        tar -xvf sqlite3.tar.gz && rm sqlite3.tar.gz
-    else
-        git clone --depth 1 https://github.com/sqlite/sqlite.git --branch version-3.44.1
-    fi
+
+    git clone --depth 1 https://github.com/sqlite/sqlite.git --branch version-3.44.1
     mv sqlite $PROJECT_NAME
 }
 

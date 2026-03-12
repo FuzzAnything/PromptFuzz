@@ -13,12 +13,8 @@ function download() {
         apt-get update && apt-get install -y cmake yasm wget
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/aom.tar.gz aom.tar.gz
-        tar -xvf aom.tar.gz && rm aom.tar.gz
-    else
-        git clone --depth 1 https://aomedia.googlesource.com/aom
-    fi
+
+    git clone --depth 1 https://aomedia.googlesource.com/aom
     mv aom ${PROJECT_NAME}
 }
 

@@ -13,15 +13,10 @@ function download() {
         apt-get update && apt-get install -y make cmake flex bison libnl-3-dev
     fi
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/libpcap.tar.gz libpcap.tar.gz
-        tar -xvf libpcap.tar.gz && rm libpcap.tar.gz
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/tcpdump.tar.gz tcpdump.tar.gz
-        tar -xvf tcpdump.tar.gz && rm tcpdump.tar.gz
-    else
-        git clone --depth 1 https://github.com/the-tcpdump-group/libpcap.git libpcap
-        git clone --depth=1 https://github.com/the-tcpdump-group/tcpdump.git tcpdump
-    fi
+
+    git clone --depth 1 https://github.com/the-tcpdump-group/libpcap.git libpcap
+    git clone --depth=1 https://github.com/the-tcpdump-group/tcpdump.git tcpdump
+
 }
 
 function build_lib() {

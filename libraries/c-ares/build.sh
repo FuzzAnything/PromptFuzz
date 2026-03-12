@@ -10,12 +10,8 @@ function download() {
     fi
 
     cd $SRC
-    if [ -x "$(command -v coscli)" ]; then
-        coscli cp cos://sbd-testing-1251316161/bench_archive/LLM_FUZZ/archives/${PROJECT_NAME}.tar.gz ${PROJECT_NAME}.tar.gz
-        tar -xvf ${PROJECT_NAME}.tar.gz && rm ${PROJECT_NAME}.tar.gz
-    else
-        git clone --depth 1 https://github.com/c-ares/c-ares.git
-    fi
+
+    git clone --depth 1 https://github.com/c-ares/c-ares.git
 }
 
 function build_lib() {
