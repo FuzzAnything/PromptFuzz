@@ -144,9 +144,9 @@ impl LibFuzzer {
         for program in self.programs.iter() {
             if let Ok(corpora) = find_testbed_corpora(program, &self.deopt) {
                 test_corpus.push(corpora);
+                new_programs.push(program.to_path_buf());
             } else {
                 log::error!("Failed to find testbed corpora for program: {program:?}, skip it and continue...");
-                new_programs.push(program.to_path_buf());
             }
         }
         self.programs = new_programs;
@@ -915,8 +915,8 @@ mod tests {
     use super::*;
     #[test]
     fn test_transform_lib_fuzzer() -> Result<()> {
-        let deopt = Deopt::new("zlib".to_string())?;
-        Config::init_test("zlib");
+        let deopt = Deopt::new("libjpeg-turbo".to_string())?;
+        Config::init_test("libjpeg-turbo");
         let test_dir: PathBuf = [deopt.get_library_output_dir()?, "seeds".into()]
             .iter()
             .collect();

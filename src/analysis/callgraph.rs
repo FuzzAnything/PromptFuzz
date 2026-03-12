@@ -102,12 +102,14 @@ impl CallGraph {
     pub fn get_direct_callees(&self, func: &str) -> Vec<&str> {
         let node = self
             .node_map
-            .get(func)
-            .unwrap_or_else(|| panic!("{func} not in callgraph!"));
+            .get(func);
+        if node.is_none() {
+            return Vec::new();
+        }
         let mut callees = Vec::new();
         for neighbor in self
             .graph
-            .neighbors_directed(*node, petgraph::Direction::Outgoing)
+            .neighbors_directed(*node.unwrap(), petgraph::Direction::Outgoing)
         {
             let callee = self.graph.node_weight(neighbor).unwrap();
             callees.push(callee.as_str());
