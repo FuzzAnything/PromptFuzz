@@ -167,7 +167,6 @@ impl LibFuzzer {
                 log::debug!("transformed {i}/{}", self.programs.len());
             }
         }
-
         Ok(())
     }
 

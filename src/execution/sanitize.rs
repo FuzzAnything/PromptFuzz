@@ -254,10 +254,14 @@ impl Executor {
 
         let corpus: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
         let control_file: PathBuf = [work_dir, "merge_control_file".into()].iter().collect();
+        if control_file.exists() {
+            std::fs::remove_file(&control_file)?;
+        }
         self.minimize_by_control_file(&fuzzer_binary, &corpus, &control_file)?;
 
         if !control_file.exists() {
-            panic!("{control_file:?} does not exist!");
+            log::error!("{control_file:?} does not exist!");
+            return Ok(());
         }
 
         let corpora_features = CorporaFeatures::parse(&control_file)?;

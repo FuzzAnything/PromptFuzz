@@ -158,7 +158,7 @@ pub struct Config {
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
     /// whether disable the coverage validation for generated harnesses. 
-    #[arg( long = "disable-coverage-validation", default_value = "false")]
+    #[arg(long = "disable-coverage-validation", default_value = "false")]
     pub disable_coverage_check: bool,
     /// The number of successful programs should be generated for a prompt. Once satisfy, a round is finished.
     #[arg(long = "fr", default_value = "1")]

@@ -550,7 +550,7 @@ impl Executor {
         let child = self.spawn(fuzzer_binary, extra_args, vec![], None, Some(Stdio::inherit()), false);
         let output = child.wait_with_output()?;
         if !output.status.success() {
-            eyre::bail!("Fail to merge corpus in {fuzzer_binary:?}")
+            log::error!("Fail to merge corpus in {fuzzer_binary:?}");
         }
         std::fs::remove_dir_all(minimize_dir)?;
         Ok(())
