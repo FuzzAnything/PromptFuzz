@@ -410,8 +410,8 @@ impl LibFuzzer {
             std::fs::remove_dir_all(&minimized)?;
         }
         let shared_corpus = self.deopt.get_library_shared_corpus_dir()?;
-        let binary_out = work_seed.with_extension("out");
-        executor.minimize_corpus(&binary_out, &minimized, &shared_corpus)?;
+        let binary_out = work_seed.with_extension("sancov");
+        executor.minimize_corpus_by_efficient_sancov(&binary_out, &minimized, &shared_corpus)?;
         Ok(minimized)
     }
 

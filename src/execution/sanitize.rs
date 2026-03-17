@@ -1,6 +1,6 @@
 use crate::{
     Deopt, config::{get_config, get_library_name}, deopt::utils::get_file_dirname, feedback::clang_coverage::{
-        CorporaFeatures, GlobalFeature, utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage}
+        GlobalFeature, utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage}
     }, program::{Program, serde::Serialize, transform::Transformer}
 };
 use eyre::Result;
@@ -118,6 +118,7 @@ impl Executor {
 
         // Sanitize the fuzzer by its reached lines
         let has_err = if get_config().disable_coverage_check {
+            log::warn!("Skip coverage sanitization since the config disable_coverage_check is set to true.");
             false
         } else {
             sanitize_by_fuzzer_coverage(program_path, &self.deopt, &coverage)?
@@ -241,7 +242,7 @@ impl Executor {
         log::debug!("Evolve fuzzing corpus by merge new coverage corpora");
         let work_dir = crate::deopt::utils::get_file_dirname(program_path);
         let time_logger = TimeUsage::new(work_dir.clone());
-        let fuzzer_binary = program_path.with_extension("evo.out");
+        let fuzzer_binary = program_path.with_extension("sancov");
         self.compile(vec![program_path], &fuzzer_binary, super::Compile::Minimize)?;
 
         let global_feature_file = self.deopt.get_library_global_feature_file()?;
@@ -253,37 +254,24 @@ impl Executor {
         };
 
         let corpus: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
-        let control_file: PathBuf = [work_dir, "merge_control_file".into()].iter().collect();
-        if control_file.exists() {
-            std::fs::remove_file(&control_file)?;
-        }
-        self.minimize_by_control_file(&fuzzer_binary, &corpus, &control_file)?;
 
-        if !control_file.exists() {
-            log::error!("{control_file:?} does not exist!");
-            return Ok(());
-        }
-
-        let corpora_features = CorporaFeatures::parse(&control_file)?;
-        let corpus_size = corpora_features.get_size();
+        let corpus_dict = Self::collect_sancov_from_corpus(&fuzzer_binary, &corpus)?;
         let mut intrestings = Vec::new();
-
-        for i in 0..corpus_size {
+        for (corpus_file, sancov) in corpus_dict {
             let mut has_new = false;
-            let features = corpora_features.get_nth_feature(i);
+            let features = sancov.covered_points;
             for fe in features {
-                if global_featuers.insert_feature(*fe) {
+                if global_featuers.insert_feature(fe) {
                     has_new = true;
                 }
             }
             if has_new {
-                intrestings.push(corpora_features.get_nth_file(i));
+                intrestings.push(corpus_file);
             }
         }
         self.deopt.copy_file_to_shared_corpus(intrestings)?;
         let buf = serde_json::to_vec(&global_featuers)?;
         std::fs::write(global_feature_file, buf)?;
-        std::fs::remove_file(control_file)?;
         time_logger.log("update")?;
         Ok(())
     }
@@ -433,8 +421,8 @@ mod tests {
 
     #[test]
     fn test_sanitization_for_a_program() -> Result<()> {
-        crate::config::Config::init_test("cJSON");
-        let deopt = Deopt::new("cJSON".to_string())?;
+        crate::config::Config::init_test("cjson");
+        let deopt = Deopt::new("cjson".to_string())?;
         //let program_path: std::path::PathBuf =
         //    [crate::Deopt::get_crate_dir()?, "testsuites", "new_test.cc"]
         //        .iter()
@@ -442,16 +430,16 @@ mod tests {
         //let work_path = deopt.get_work_seed_by_id(0)?;
         //std::fs::copy(program_path, &work_path)?;
         let executor = Executor::new(&deopt)?;
-        let res = executor.check_program_is_correct(&deopt.get_work_seed_by_id(0)?);
+        let res = executor.check_program_is_correct(&deopt.get_work_seed_by_id(1)?);
         println!("{res:?}");
         Ok(())
     }
 
     #[test]
     fn test_corpus_evoluation() -> Result<()> {
-        crate::config::Config::init_test("cJSON");
-        let deopt = Deopt::new("cJSON".to_string())?;
-        let work_path = deopt.get_work_seed_by_id(61)?;
+        crate::config::Config::init_test("cjson");
+        let deopt = Deopt::new("cjson".to_string())?;
+        let work_path = deopt.get_work_seed_by_id(1)?;
         let executor = Executor::new(&deopt)?;
         let res = executor.evolve_corpus(&work_path)?;
         println!("{res:?}");

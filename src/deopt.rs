@@ -381,7 +381,7 @@ impl Deopt {
         Ok(profdata)
     }
 
-    pub fn copy_file_to_shared_corpus(&self, instresting_files: Vec<&Path>) -> Result<()> {
+    pub fn copy_file_to_shared_corpus(&self, instresting_files: Vec<PathBuf>) -> Result<()> {
         let corpus_dir = self.get_library_shared_corpus_dir()?;
         for file in instresting_files {
             let dst: PathBuf = [
@@ -447,6 +447,13 @@ impl Deopt {
     /// path of source file of FuzzDataProvider
     pub fn get_fdp_path() -> Result<PathBuf> {
         let path = [Deopt::get_crate_dir()?, config::FDP_PATH].iter().collect();
+        Ok(path)
+    }
+
+    pub fn get_fuzz_wrapper() -> Result<PathBuf> {
+        let path = [Deopt::get_crate_dir()?, config::FDP_PATH, "fuzz_wrapper.cc".into()]
+            .iter()
+            .collect();
         Ok(path)
     }
 
@@ -719,6 +726,20 @@ pub mod utils {
             let lib_name = deopt.config.static_lib_name.clone();
             let lib_name = lib_name.strip_suffix(".a").unwrap();
             let san_lib = format!("{}_san.a", lib_name);
+            let lib_path: PathBuf = [deopt.get_library_build_lib_path().unwrap(), san_lib.into()]
+                .iter()
+                .collect();
+            lib_path
+        })
+    }
+
+        /// get the build static library linked with sanitizers
+    pub fn get_sancov_lib_path(deopt: &Deopt) -> &'static PathBuf {
+        static PATH: OnceCell<PathBuf> = OnceCell::new();
+        PATH.get_or_init(|| {
+            let lib_name = deopt.config.static_lib_name.clone();
+            let lib_name = lib_name.strip_suffix(".a").unwrap();
+            let san_lib = format!("{}_sancov.a", lib_name);
             let lib_path: PathBuf = [deopt.get_library_build_lib_path().unwrap(), san_lib.into()]
                 .iter()
                 .collect();

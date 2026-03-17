@@ -4,7 +4,7 @@ pub mod sanitize;
 
 use self::logger::ProgramError;
 use crate::config::{get_config, get_minimize_compile_flag};
-use crate::deopt::utils;
+use crate::feedback::sancov::Sancov;
 use crate::program::libfuzzer::respawn_libfuzzer_process;
 use crate::program::transform::Transformer;
 use crate::{
@@ -16,8 +16,10 @@ use crate::{
 };
 use eyre::Result;
 use regex::Regex;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::process::ChildStderr;
+use std::sync::Mutex;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::channel,
@@ -92,7 +94,7 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
     return cmd;
 }
 
-#[derive(Debug, Clone, clap::ValueEnum)]
+#[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum Compile {
     SANITIZE,
     FUZZER,
@@ -119,7 +121,7 @@ impl Executor {
         })
     }
 
-    fn get_compile_flags(&self, kind: Compile) -> (Vec<&'static str>, &'static PathBuf) {
+    fn get_compile_flags(&self, kind: &Compile) -> (Vec<&'static str>, &'static PathBuf) {
         let (cflags, lib) = match kind {
             Compile::SANITIZE => {
                 let flags = crate::config::SANITIZER_FLAGS.to_vec();
@@ -137,10 +139,10 @@ impl Executor {
                 (flags, cov_lib)
             }
             Compile::Minimize => {
-                let mut flags = crate::config::FUZZER_FLAGS.to_vec();
+                let mut flags = crate::config::SANCOV_FLAGS.to_vec();
                 let min_flag = get_minimize_compile_flag();
                 flags.push(min_flag);
-                let fuzz_lib = crate::deopt::utils::get_fuzzer_lib_path(&self.deopt);
+                let fuzz_lib = crate::deopt::utils::get_sancov_lib_path(&self.deopt);
                 (flags, fuzz_lib)
             }
         };
@@ -149,11 +151,14 @@ impl Executor {
 
     /// compile programs into binary.
     pub fn compile(&self, programs: Vec<&Path>, out: &Path, kind: Compile) -> Result<()> {
-        let (cflags, lib) = self.get_compile_flags(kind);
+        let (cflags, lib) = self.get_compile_flags(&kind);
 
         let mut cmd = Command::new("clang++");
         for program in &programs {
             cmd.arg(*program);
+        }
+        if kind == Compile::Minimize {
+            cmd.arg(Deopt::get_fuzz_wrapper()?);
         }
         let include_fdp = "-I".to_owned() + Deopt::get_fdp_path()?.to_str().unwrap();
 
@@ -399,11 +404,11 @@ impl Executor {
     pub fn execute_cov_fuzzer(
         &self,
         fuzzer_binary: &Path,
-        corpus_dir: &Path,
+        corpus_file: &Path,
         profraw: &Path,
     ) -> Result<()> {
         let extra_envs = vec![(OsStr::new("LLVM_PROFILE_FILE"), profraw.as_os_str())];
-        let extra_args = vec![OsStr::new("-runs=0"), corpus_dir.as_os_str()];
+        let extra_args = vec![corpus_file.as_os_str()];
         let mut child = self.spawn(fuzzer_binary, extra_args, extra_envs, None, None, false);
         let timeout = std::time::Duration::from_secs(crate::config::EXECUTION_TIMEOUT);
         let status = match child.wait_timeout(timeout).unwrap() {
@@ -414,7 +419,7 @@ impl Executor {
             }
         };
         if !is_exit_normally(status) {
-            log::warn!("execute fuzz_cov failed! {fuzzer_binary:?}, {corpus_dir:?}");
+            log::warn!("execute fuzz_cov failed! {fuzzer_binary:?}, {corpus_file:?}");
             if let Some(err) = child.stderr.take() {
                 let err_msg = get_child_err(err);
                 log::error!("Error: {err_msg}");
@@ -502,59 +507,123 @@ impl Executor {
         Ok(cov)
     }
 
-    pub fn minimize_corpus(
+    pub fn symbolize_sancov_file(fuzzer_binary: &Path, sancov_file: &Path) -> Result<Option<Sancov>> {
+        let cmd = Command::new("sancov")
+            .arg("-symbolize")
+            .arg(fuzzer_binary)
+            .arg(sancov_file)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("failed to spawn the process for symbolizing sancov file");
+        let output = cmd.wait_with_output().expect("failed to wait for the process for symbolizing sancov file");
+        if !output.status.success() {
+            let err_msg = String::from_utf8_lossy(&output.stderr);
+            log::warn!("Error executing sancov for symbolization: {err_msg}");
+            return Ok(None);
+        }
+        let sancov_info = serde_json::from_slice::<Sancov>(&output.stdout)?;
+        log::trace!("Symbolized sancov file {sancov_file:?} with: {} covered points", sancov_info.covered_points.len());
+        Ok(Some(sancov_info))
+    }
+
+    pub fn collect_sancov_from_a_file(fuzzer_sancov: &Path, corpus_file: &Path, sancov_dir: &Path) -> Result<Option<Sancov>> {
+        let extra_envs = vec![
+            (OsStr::new("ASAN_OPTIONS"), OsStr::new(format!("coverage=1:coverage_dir={}", sancov_dir.to_string_lossy()).as_str()).to_os_string()),
+        ];
+        let child = Command::new(fuzzer_sancov)
+            .arg(corpus_file) // 确保这里是正确的参数位置
+            .envs(extra_envs)
+            .stdout(Stdio::piped()) // 同样捕获 stdout
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let pid = child.id();
+        let output = child.wait_with_output().expect("failed to wait for the process for collecting sancov");
+        if !output.status.success() {
+            let err_msg: std::borrow::Cow<'_, str> = String::from_utf8_lossy(&output.stderr);
+            log::warn!("Error executing fuzzer for sancov collection (PID: {pid}): {err_msg}");
+            return Ok(None);
+        }
+        let fuzzer_name = fuzzer_sancov.file_name().unwrap_or_else(|| OsStr::new("unknown_fuzzer")).to_string_lossy();
+        let sancov_file = sancov_dir.join(format!("{fuzzer_name}.{pid}.sancov"));
+        if !sancov_file.exists() {
+            log::warn!("Expected sancov file not found: {sancov_file:?}");
+            return Ok(None);
+        }
+        Self::symbolize_sancov_file(fuzzer_sancov, &sancov_file)
+    }
+
+
+    pub fn collect_sancov_from_corpus(fuzzer_sancov: &Path, corpus: &Path) -> Result<HashMap<PathBuf, Sancov>> {
+        let fuzzer_dir = get_file_dirname(fuzzer_sancov);
+        let sancov_dir: PathBuf = [fuzzer_dir, "sancov".into()].iter().collect();
+        crate::deopt::utils::create_dir_if_nonexist(&sancov_dir)?;
+
+        let corpus_files = crate::deopt::utils::read_all_files_in_dir(corpus)?;
+        let cpu_count = max_cpu_count();
+        let pool = ThreadPool::new(cpu_count);
+        let corpus_dict = Arc::new(Mutex::new(HashMap::new()));
+        for corpus_file in corpus_files {
+            let fuzzer_sancov = fuzzer_sancov.to_path_buf();
+            let sancov_dir = sancov_dir.to_path_buf();
+            let corpus_dict = Arc::clone(&corpus_dict);
+            pool.execute( move || {
+                let sancov_info = Self::collect_sancov_from_a_file(&fuzzer_sancov, &corpus_file, &sancov_dir).unwrap_or(None);
+                if let Some(sancov_info) = sancov_info {
+                    let mut dict = corpus_dict.lock().unwrap();
+                    dict.insert(corpus_file, sancov_info);
+                }
+            });
+        }
+        pool.join();
+        let dict = Arc::try_unwrap(corpus_dict).unwrap().into_inner().unwrap();
+        Ok(dict)
+
+    }
+    
+    pub fn select_corpus_by_examining_sancov(corpus_dict: HashMap<PathBuf, Sancov>) -> Vec<PathBuf> {
+        let mut minimal_set: Vec<PathBuf> = Vec::new();
+        let mut feature_set = std::collections::HashSet::new();
+        for (file_path, sancov_info) in corpus_dict {
+            let covered_points: HashSet<String> = sancov_info.covered_points.into_iter().collect();
+            let difference: std::collections::HashSet<String> = covered_points.difference(&feature_set).cloned().collect();
+            log::trace!("Examined file {file_path:?}, covered points: {}, difference: {}, feature_set: {}", covered_points.len(), difference.len(), feature_set.len());
+            if difference.is_empty() {
+                continue;
+            }
+            feature_set.extend(difference);
+            minimal_set.push(file_path);
+        }
+        minimal_set
+    }
+
+    pub fn minimize_corpus_by_efficient_sancov(
         &self,
-        fuzzer_binary: &Path,
+        fuzzer_sancov: &Path,
         minimize: &Path,
         corpus: &Path,
     ) -> Result<()> {
         log::trace!("merge corpus {corpus:?} to {minimize:?}");
         crate::deopt::utils::create_dir_if_nonexist(minimize)?;
-        let extra_args = vec![
-            OsStr::new("-merge=1"),
-            minimize.as_os_str(),
-            corpus.as_os_str(),
-        ];
-        let child = self.spawn(fuzzer_binary, extra_args, vec![], None, None, false);
-        let output = child.wait_with_output()?;
-        if !output.status.success() {
-            eyre::bail!("Fail to merge corpus in {fuzzer_binary:?}")
-        }
-        Ok(())
-    }
 
-    pub fn minimize_by_control_file(
-        &self,
-        fuzzer_binary: &Path,
-        corpus: &Path,
-        control_file: &Path,
-    ) -> Result<()> {
-        if utils::is_dir_empty(corpus)? {
-            log::warn!("Corpus {corpus:?} is empty, skip minimizing by control file.");
+        let sancov_dict = Self::collect_sancov_from_corpus(fuzzer_sancov, corpus)?;
+        if sancov_dict.is_empty() {
+            log::warn!("No valid sancov information collected from corpus {corpus:?}. Skipping minimization.");
             return Ok(());
         }
 
-        let work_dir = get_file_dirname(fuzzer_binary);
-        let minimize_dir: PathBuf = [work_dir, "temp_minimize".into()].iter().collect();
-        crate::deopt::utils::create_dir_if_nonexist(&minimize_dir)?;
-        let mcf_arg = format!(
-            "-merge_control_file={}",
-            control_file.to_string_lossy()
-        );
-        let extra_args = vec![
-            OsStr::new("-merge=1"),
-            OsStr::new(&mcf_arg),
-            minimize_dir.as_os_str(),
-            corpus.as_os_str(),
-        ];
-        let child = self.spawn(fuzzer_binary, extra_args, vec![], None, Some(Stdio::inherit()), false);
-        let output = child.wait_with_output()?;
-        if !output.status.success() {
-            log::error!("Fail to merge corpus in {fuzzer_binary:?}");
+        let selected_corpus = Self::select_corpus_by_examining_sancov(sancov_dict);
+        for file in selected_corpus {
+            let file_name = file.file_name().unwrap();
+            let dest = minimize.join(file_name);
+            std::fs::copy(&file, &dest)?;
+            log::trace!("Selected file {file:?} for minimization, copied to {dest:?}");
         }
-        std::fs::remove_dir_all(minimize_dir)?;
+
         Ok(())
     }
+
 
     /// concurrently transform programs to fuzzers.
     pub fn concurrent_transform(
@@ -715,7 +784,7 @@ impl Executor {
                 std::fs::rename(final_corpus, &corpus)?;
             }
             if should_minimize {
-                self.minimize_corpus(&fuzzer_binary, &minimize, &corpus)?;
+                self.minimize_corpus_by_efficient_sancov(&fuzzer_binary, &minimize, &corpus)?;
                 std::fs::remove_dir_all(&corpus)?;
                 std::fs::rename(minimize, &corpus)?;
             }

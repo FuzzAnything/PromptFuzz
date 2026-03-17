@@ -38,6 +38,17 @@ function san_env() {
     export CXXFLAGS="${CXXFLAGS:-} $SANITIZER_FLAGS"
 }
 
+function sancov_env() {
+    blue_echo "set sancov env"
+    unset CFLAGS
+    unset CXXFLAGS
+    export CC=clang
+    export CXX=clang++
+    SANITIZER_FLAGS="-O2 -fsanitize=address -fsanitize-coverage=trace-pc-guard -g -fPIC"
+    export CFLAGS="${CFLAGS:-} $SANITIZER_FLAGS"
+    export CXXFLAGS="${CXXFLAGS:-} $SANITIZER_FLAGS"
+}
+
 # Set libfuzzer's environment for building library
 # Libfuzzer:
 # https://releases.llvm.org/5.0.0/docs/LibFuzzer.html
@@ -142,11 +153,11 @@ function copy_share_lib() {
     cp ${NEW_DYNLIB_NAME} ${LIB_BUILD}/lib/${NEW_DYNLIB_NAME}
 }
 
-function build_san() {
+function build_sancov() {
     blue_echo "build sanitizers"
-    san_env
+    sancov_env
     build_lib
-    copy_lib san
+    copy_lib sancov
 }
 
 function build_fuzzer() {
@@ -199,7 +210,7 @@ function load_flags() {
 function build_all() {
     init && \
     download && \
-    #build_san && \
+    build_sancov && \
     build_fuzzer && \
     build_debug_fuzzer &&\
     build_corpus && \

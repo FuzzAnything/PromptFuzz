@@ -346,8 +346,8 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
     if corpus_dir.exists() {
         std::fs::remove_dir_all(&corpus_dir)?;
     }
-    let fuzzer_bin = fuzzer_code.with_extension("out");
-    executor.minimize_corpus(
+    let fuzzer_bin = fuzzer_code.with_extension("sancov");
+    executor.minimize_corpus_by_efficient_sancov(
         &fuzzer_bin,
         &corpus_dir,
         &executor.deopt.get_library_shared_corpus_dir()?,

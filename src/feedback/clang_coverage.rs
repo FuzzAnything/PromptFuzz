@@ -8,8 +8,8 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{deopt::utils::get_file_dirname, deopt::utils::is_dir_empty,feedback::observer::Observer};
-use crate::{execution::Executor, program::serde::Deserializer};
+use crate::{deopt::utils::{get_file_dirname, is_dir_empty}, feedback::observer::Observer};
+use crate::execution::Executor;
 
 use super::branches::{parse_branch, Branch};
 
@@ -279,90 +279,31 @@ impl CodeCoverage {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GlobalFeature {
-    features: HashSet<u32>,
+    features: HashSet<String>,
 }
 
 impl GlobalFeature {
-    pub fn insert_feature(&mut self, fe: u32) -> bool {
+    pub fn insert_feature(&mut self, fe: String) -> bool {
         self.features.insert(fe)
     }
 
     pub fn init_by_corpus(executor: &Executor, fuzzer: &Path) -> Result<Self> {
         let mut gf = Self::default();
-
-        let work_dir = get_file_dirname(fuzzer);
         let shared_corpus = executor.deopt.get_library_shared_corpus_dir()?;
         if is_dir_empty(&shared_corpus)? {
             return Ok(gf)
         }
 
-        let control_file: PathBuf = [work_dir, "merge_control_file".into()].iter().collect();
-        executor.minimize_by_control_file(
-            fuzzer,
-            &shared_corpus,
-            &control_file,
-        )?;
-        if !control_file.exists() {
-            panic!("{control_file:?} does not exist!");
-        }
-        let corpora_features = CorporaFeatures::parse(&control_file)?;
-        let corpus_size = corpora_features.get_size();
-        for i in 0..corpus_size {
-            for fe in corpora_features.get_nth_feature(i) {
-                gf.insert_feature(*fe);
+        let sancov_dict = Executor::collect_sancov_from_corpus(fuzzer, &shared_corpus)?;
+        for (_, sancov) in sancov_dict {
+            for fe in sancov.covered_points {
+                if gf.features.contains(&fe) {
+                    continue;
+                }
+                gf.insert_feature(fe);
             }
         }
-        std::fs::remove_file(control_file)?;
         Ok(gf)
-    }
-}
-
-pub struct CorporaFeatures {
-    files: Vec<PathBuf>,
-    features: Vec<Vec<u32>>,
-}
-
-impl CorporaFeatures {
-    pub fn parse(path: &Path) -> Result<Self> {
-        let buf = std::fs::read_to_string(path)?;
-        let mut de = Deserializer::from_input(&buf);
-        let total: u32 = de.parse_number()?;
-        let _pre: u32 = de.parse_number()?;
-        assert_eq!(_pre, 0);
-        let mut files = Vec::new();
-        for _ in 0..total {
-            let corpora = de.parse_path()?;
-            files.push(corpora);
-        }
-        let mut features = Vec::new();
-        for _ in 0..total {
-            de.consume_token_until("STARTED")?;
-            let _fileid: u32 = de.parse_number()?;
-            let _filesize: u32 = de.parse_number()?;
-            de.eat_token("FT")?;
-            let feature_list = de.consume_token_until("\n")?;
-            let mut feature: Vec<u32> = feature_list
-                .split(' ')
-                .map(|x| x.parse::<u32>().expect("parse coverge feature error."))
-                .collect();
-            feature.remove(0);
-            features.push(feature);
-            de.eat_token("COV")?;
-        }
-        let se = Self { files, features };
-        Ok(se)
-    }
-
-    pub fn get_size(&self) -> usize {
-        self.files.len()
-    }
-
-    pub fn get_nth_feature(&self, nth: usize) -> &Vec<u32> {
-        &self.features[nth]
-    }
-
-    pub fn get_nth_file(&self, nth: usize) -> &Path {
-        &self.files[nth]
     }
 }
 
@@ -480,6 +421,9 @@ impl Executor {
         let fuzzer_binary: PathBuf = [PathBuf::from(fuzzer_dir), "fuzzer".into()]
             .iter()
             .collect();
+        let fuzzer_sancov: PathBuf = [PathBuf::from(fuzzer_dir), "fuzzer_sancov".into()]
+            .iter()
+            .collect();
 
         // recover the pruned error branches for collecting coverage
         let content = std::fs::read_to_string(&fuzzer_code)?;
@@ -499,7 +443,7 @@ impl Executor {
             .iter()
             .collect();
         if !minimized_corpus.exists() {
-            self.minimize_corpus(&fuzzer_binary, &minimized_corpus, &corpus)?;
+            self.minimize_corpus_by_efficient_sancov(&fuzzer_sancov, &minimized_corpus, &corpus)?;
             std::fs::remove_dir_all(corpus)?;
         }
 
@@ -807,13 +751,4 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_parse_corpora_features() -> Result<()> {
-        let mut mcf = Deopt::get_crate_testsuit_dir()?;
-        mcf.push("corpora");
-        mcf.push("merge_control_file");
-        let cf = CorporaFeatures::parse(&mcf)?;
-        assert_eq!(cf.get_size(), 252);
-        Ok(())
-    }
 }

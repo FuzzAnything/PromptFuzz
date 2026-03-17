@@ -15,7 +15,7 @@ RUN apt-get update \
 # build llvm and clang dependency
 RUN wget https://apt.llvm.org/llvm.sh \
     && chmod +x llvm.sh \
-    && ./llvm.sh 18 \
+    && ./llvm.sh 18 all \
     && ln -s /usr/bin/clang-18 /usr/bin/clang \
     && ln -s /usr/bin/clang++-18 /usr/bin/clang++
 
