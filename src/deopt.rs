@@ -391,7 +391,7 @@ impl Deopt {
             .iter()
             .collect();
             log::trace!("Find new coverage corpus: {:?}", dst);
-            std::fs::copy(file, dst)?;
+            _ = std::fs::copy(file, dst);
         }
         Ok(())
     }

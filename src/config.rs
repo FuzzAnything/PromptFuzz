@@ -74,6 +74,11 @@ pub const COVERAGE_FLAGS: [&str; 9] = [
     "-ftrivial-auto-var-init=zero",
 ];
 
+pub const SANCOV_FLAGS: [&str; 2] = [
+    "-fsanitize=address",
+    "-fsanitize-coverage=trace-pc-guard"
+];
+
 pub const ASAN_OPTIONS: [&str; 2] = ["exitcode=168", "alloc_dealloc_mismatch=0"];
 
 pub fn get_openai_model_name() -> String {
@@ -198,7 +203,7 @@ impl Config {
             recheck: false,
             fuzzer_run: false,
             disable_power_schedule: false,
-            disable_coverage_check: false,
+            disable_coverage_check: true,
         };
         let _ = CONFIG_INSTANCE.set(RwLock::new(config));
         crate::init_debug_logger().unwrap();

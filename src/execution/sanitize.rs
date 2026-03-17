@@ -126,7 +126,9 @@ impl Executor {
         time_logger.log("coverage")?;
         self.evolve_corpus(program_path)?;
         // remove the profraw dir to avoid the huge disk cost.
-        std::fs::remove_dir_all(corpus_dir)?;
+        if let Err(e) = std::fs::remove_dir_all(&corpus_dir) {
+            log::warn!("Failed to remove corpus dir {:?}: {}", corpus_dir, e);
+        }
 
         if !has_err {
             return Ok(None);
