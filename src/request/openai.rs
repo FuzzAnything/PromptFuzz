@@ -145,7 +145,7 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
     pub static CLIENT: OnceCell<Client<OpenAIConfig>> = OnceCell::new();
     let client = CLIENT.get_or_init(|| {
         let http_client = reqwest::ClientBuilder::new()
-            .connect_timeout(Duration::from_secs(10))
+            .connect_timeout(Duration::from_secs(300))
             .timeout(Duration::from_secs(600))
             .build()
             .unwrap();
