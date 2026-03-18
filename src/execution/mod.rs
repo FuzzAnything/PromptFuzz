@@ -4,6 +4,7 @@ pub mod sanitize;
 
 use self::logger::ProgramError;
 use crate::config::{get_config, get_minimize_compile_flag};
+use crate::deopt::utils::create_dir_if_nonexist;
 use crate::feedback::sancov::Sancov;
 use crate::program::libfuzzer::respawn_libfuzzer_process;
 use crate::program::transform::Transformer;
@@ -59,6 +60,7 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
 
     // Deny network access
     cmd.arg("--unshare-net");
+    //cmd.arg("--unshare-pid");
     cmd.arg("--die-with-parent");
     cmd.arg("--new-session");
     
@@ -528,30 +530,39 @@ impl Executor {
         Ok(Some(sancov_info))
     }
 
+    fn get_sancov_file_from_sancov_dir(sancov_dir: &Path) -> Option<PathBuf> {
+        for entry in std::fs::read_dir(sancov_dir).ok()? {
+            let path = entry.ok()?.path();
+            if path.is_file() && path.extension().is_some() && path.extension().unwrap() == "sancov" {
+                return Some(path);
+            }
+        }
+        None
+    }
+
     pub fn collect_sancov_from_a_file(fuzzer_sancov: &Path, corpus_file: &Path, sancov_dir: &Path) -> Result<Option<Sancov>> {
-        let extra_envs = vec![
-            (OsStr::new("ASAN_OPTIONS"), OsStr::new(format!("coverage=1:coverage_dir={}", sancov_dir.to_string_lossy()).as_str()).to_os_string()),
-        ];
-        let child = Command::new(fuzzer_sancov)
-            .arg(corpus_file) // 确保这里是正确的参数位置
-            .envs(extra_envs)
-            .stdout(Stdio::piped()) // 同样捕获 stdout
+        let corpus_file_name = corpus_file.file_name().unwrap_or_else(|| OsStr::new("unknown_corpus"));
+        let sancov_dir = sancov_dir.to_path_buf().join(corpus_file_name);
+        create_dir_if_nonexist(&sancov_dir)?;
+        let extra_envs = vec![];
+        let mut cmd = wrap_command_with_bubblewrap(fuzzer_sancov, &vec![corpus_file.as_os_str().to_os_string()], &extra_envs, format!("coverage=1:coverage_dir={}", sancov_dir.to_string_lossy()).as_str(), &[]); 
+        let child = cmd
+            .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        let pid = child.id();
         let output = child.wait_with_output().expect("failed to wait for the process for collecting sancov");
         if !output.status.success() {
             let err_msg: std::borrow::Cow<'_, str> = String::from_utf8_lossy(&output.stderr);
-            log::warn!("Error executing fuzzer for sancov collection (PID: {pid}): {err_msg}");
+            log::warn!("Error executing fuzzer for sancov collection: {err_msg}");
             return Ok(None);
         }
-        let fuzzer_name = fuzzer_sancov.file_name().unwrap_or_else(|| OsStr::new("unknown_fuzzer")).to_string_lossy();
-        let sancov_file = sancov_dir.join(format!("{fuzzer_name}.{pid}.sancov"));
-        if !sancov_file.exists() {
-            log::warn!("Expected sancov file not found: {sancov_file:?}");
-            return Ok(None);
+        let sancov_file = Self::get_sancov_file_from_sancov_dir(&sancov_dir);
+        if let Some(sancov_file) = &sancov_file {
+            Self::symbolize_sancov_file(fuzzer_sancov, &sancov_file)
+        } else {
+            log::warn!("No sancov file found in directory: {sancov_dir:?}");
+            Ok(None)
         }
-        Self::symbolize_sancov_file(fuzzer_sancov, &sancov_file)
     }
 
 

@@ -21,7 +21,7 @@ use serde_json::Value;
 
 use super::Handler;
 
-/// Token使用统计结构
+/// Token usage statistics structure
 #[derive(Debug, Clone, Default)]
 pub struct TokenUsage {
     pub prompt_tokens: u32,
