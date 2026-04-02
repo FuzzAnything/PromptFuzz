@@ -189,13 +189,13 @@ impl GlobalBranches {
             }
             visited.insert(func_name);
             let func_states = llvm_branches_to_internal(&func.branches);
-            let global_states = self
-                .branches
-                .get(func_name)
-                .unwrap_or_else(|| panic!("cannot found {func_name} in branch"));
-            let has_new = Self::check_branch_states(global_states, &func_states);
-            if !has_new.is_empty() {
-                new_branches.insert(func_name.to_string(), has_new);
+            if let Some(global_states) = self.branches.get(func_name) {
+                let has_new = Self::check_branch_states(global_states, &func_states);
+                if !has_new.is_empty() {
+                    new_branches.insert(func_name.to_string(), has_new);
+                }
+            } else {
+                log::error!("cannot found {func_name} in branch tracking, maybe there is name mangling issue");
             }
         }
         new_branches
