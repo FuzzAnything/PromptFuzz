@@ -352,6 +352,7 @@ impl Executor {
             let dict_arg = format!("-dict={}", dict.to_string_lossy());
             extra_args.push(OsString::from(dict_arg));
         }
+        extra_args.push(OsString::from("-close_fd_mask=3"));
 
         let mut child = self.spawn(
             fuzzer,
@@ -385,7 +386,8 @@ impl Executor {
             }
             match child.try_wait() {
                 Ok(Some(_status)) => {
-                    let err_msg = std::fs::read_to_string(log_file)?;
+                    let bytes = std::fs::read(log_file)?;
+                    let err_msg = String::from_utf8_lossy(&bytes);
                     eyre::bail!("cost time: {cost_time} \n{err_msg}")
                 }
                 Ok(None) => {
@@ -956,7 +958,8 @@ pub fn create_corpus_for_fuzzer(fuzzer_path: &Path, deopt: &Deopt) -> Result<Pat
 }
 
 fn parse_cov_from_log(log_file: &Path) -> eyre::Result<Option<usize>> {
-    let msg = std::fs::read_to_string(log_file)?;
+    let bytes = std::fs::read(log_file)?;
+    let msg = String::from_utf8_lossy(&bytes);
     let last_line = msg.lines().last().ok_or_else(|| eyre::eyre!("{msg}"))?;
     let re = Regex::new(r"cov: (\d+)")?;
     if let Some(captures) = re.captures(last_line) {
