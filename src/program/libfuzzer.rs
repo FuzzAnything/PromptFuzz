@@ -659,6 +659,7 @@ pub mod sanitize_crash {
     use super::*;
 
     pub fn sanitize_crash(fuzzer_dir: &Path, deopt: &Deopt) -> Result<()> {
+        log::info!("Sanitize the crashes found by libfuzzer! fuzzer_dir: {fuzzer_dir:?}");
         let executor = Executor::new(deopt)?;
         for fuzz_entry in crate::deopt::utils::read_sort_dir(fuzzer_dir)? {
             if !fuzz_entry.is_dir() {
@@ -679,7 +680,7 @@ pub mod sanitize_crash {
             }
             let crashes = sanitize_false_alarm_crashes(crashes, deopt)?;
             let unique_crashes = sanitize_crash_by_call_stack(crashes)?;
-            let ubsan_crashes = sanitize_ubsan_report(&fuzz_entry, &executor)?;
+            let ubsan_crashes: Vec<String> = sanitize_ubsan_report(&fuzz_entry, &executor)?;
             log::info!("the unique ASAN crashes: {unique_crashes:#?}");
             log::info!("the unique UBSAN crashes: {ubsan_crashes:?}");
         }
@@ -717,6 +718,7 @@ pub mod sanitize_crash {
 
     /// test fuzzer on the ASAN produced artcrafted file
     fn sanitize_asan_artcraft_file(fuzzer_entry: &Path, executor: &Executor) -> Result<()> {
+        log::info!("Sanitize the ASAN artcraft files in {fuzzer_entry:?}");
         let fuzz_work_dir: PathBuf = [fuzzer_entry.to_path_buf(), "work".into()].iter().collect();
 
         // get the artcraft files
@@ -790,7 +792,7 @@ pub mod sanitize_crash {
 
         let mut triger_input = report_dir.clone();
         triger_input.push("triger_input");
-        std::fs::copy(corpora, triger_input)?;
+        std::fs::copy(corpora, triger_input).expect(&format!("cannot copy {}", corpora.display()));
 
         let mut fuzz_log = report_dir.clone();
         fuzz_log.push("fuzz.log");

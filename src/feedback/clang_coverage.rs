@@ -327,10 +327,17 @@ impl Executor {
             log::warn!("profraw_files is empty, skip merging profdata.");
             return Ok(())
         }
+
         let mut output = Command::new("llvm-profdata");
         let cmd = output.arg("merge").arg("-sparse");
-        for prof_file in profraw_files {
-            cmd.arg(prof_file);
+        if profraw_files.len() > 5000 {
+            let first_file = profraw_files.first().unwrap();
+            let prowraw_dir = get_file_dirname(first_file);
+            cmd.arg(prowraw_dir);
+        } else {
+            for prof_file in profraw_files {
+                cmd.arg(prof_file);
+            }
         }
         let output = cmd.arg("-o").arg(profdata).output()?;
         if !output.status.success() {
@@ -436,6 +443,11 @@ impl Executor {
             &fuzzer_binary,
             crate::execution::Compile::FUZZER,
         )?;
+        //self.compile_lib_fuzzers(
+        //    fuzzer_dir,
+        //    &fuzzer_binary,
+        //    crate::execution::Compile::Minimize,
+        //)?;
         let corpus: PathBuf = [PathBuf::from(fuzzer_dir), "corpus".into()]
             .iter()
             .collect();
@@ -458,6 +470,10 @@ impl Executor {
         )?;
 
         // run fuzzer with cov on each corpus file.
+        if std::fs::read_dir(&minimized_corpus)?.next().is_none() {
+            log::error!("minimized corpus is empty, skip collecting coverage for fuzzer: {fuzzer_dir:?}");
+            return Ok(())
+        }
         let profdata: PathBuf = crate::deopt::Deopt::get_coverage_file_by_dir(fuzzer_dir);
         self.execute_cov_fuzzer_pool(&fuzzer_binary, vec![&minimized_corpus], &profdata)?;
         Ok(())

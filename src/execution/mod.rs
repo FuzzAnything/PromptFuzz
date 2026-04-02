@@ -410,7 +410,7 @@ impl Executor {
         profraw: &Path,
     ) -> Result<()> {
         let extra_envs = vec![(OsStr::new("LLVM_PROFILE_FILE"), profraw.as_os_str())];
-        let extra_args = vec![corpus_file.as_os_str()];
+        let extra_args = vec![corpus_file.as_os_str(), OsStr::new("-runs=0")];
         let mut child = self.spawn(fuzzer_binary, extra_args, extra_envs, None, None, false);
         let timeout = std::time::Duration::from_secs(crate::config::EXECUTION_TIMEOUT);
         let status = match child.wait_timeout(timeout).unwrap() {
