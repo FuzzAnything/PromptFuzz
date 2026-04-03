@@ -248,7 +248,7 @@ function build_all() {
     build_dict && \
     build_cov && \
     copy_include && \
-    build_bc && \
     build_afl && \
+    build_bc && \
     write_magicbytes_to_dict 
 }

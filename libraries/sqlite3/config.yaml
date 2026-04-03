@@ -2,7 +2,7 @@ project_name: sqlite3
 static_lib_name: libsqlite3.a
 dyn_lib_name: libsqlite3.so
 ban:
-  ~
+  - sqlite3_win32_\w+
 init: "
 extern \"C\" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   sqlite3* db;

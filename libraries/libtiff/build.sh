@@ -10,12 +10,12 @@ set -Eeo pipefail
 set -x
 
 function download() {
-    if [[ ! -z "${DOCKER_CONTAINER:-}" ]]; then
-        apt-get update &&
-            apt-get -y upgrade &&
-            apt-get -y install yasm liblzma-dev &&
-            apt-get clean
-    fi
+    
+    apt-get update &&
+        apt-get -y upgrade &&
+        apt-get -y install yasm liblzma-dev &&
+        apt-get clean
+    
     cd $SRC
 
     git clone --depth 1 https://gitlab.com/libtiff/libtiff

@@ -9,15 +9,16 @@ DIR=$(pwd)
 
 
 function download() {
-    if [[ ! -z "${DOCKER_CONTAINER:-}" ]]; then
-        apt-get update && apt install -y make autoconf automake libtool shtool
-        apt-get update && apt install -y libbz2-dev      liblzma-dev      zlib1g-dev      libzstd-dev      liblz4-dev
-    fi
+    
+    apt-get update && apt install -y make autoconf automake libtool shtool
+    apt-get update && apt install -y libbz2-dev      liblzma-dev      zlib1g-dev      libzstd-dev      liblz4-dev
+    
     cd $SRC
 
     git clone --depth 1 https://github.com/file/file.git
     git clone --depth 1 https://github.com/facebook/zstd.git
     git clone --depth 1 https://github.com/lz4/lz4.git
+    git clone --depth 1 https://github.com/tukaani-project/xz.git
     git clone --depth 1 https://github.com/libarchive/bzip2.git
     pushd file
     git clone --depth 1 https://github.com/DavidKorczynski/binary-samples.git
@@ -39,7 +40,7 @@ function build_zstd() {
     save_flags
     pushd $ZSTD_DIR
     rm -rf fuzz_build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DCMAKE_INSTALL_LIBDIR=$INSTALLDIR/lib -B fuzz_build -S build/cmake
+    cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR -DCMAKE_INSTALL_LIBDIR=$INSTALL_DIR/lib -B fuzz_build -S build/cmake
     cd fuzz_build
     make -j$(nproc)
     make install
@@ -70,19 +71,78 @@ function build_bzip2() {
     load_flags
 }
 
+function build_xz() {
+    save_flags
+    pushd $XZ_DIR
+    if [[ -x ./autogen.sh ]]; then
+        ./autogen.sh
+    else
+        autoreconf -fi
+    fi
+    ./configure --prefix=$INSTALL_DIR \
+                --disable-shared \
+                --enable-static
+    make -j$(nproc)
+    make install
+
+    # Fallback for environments where install paths differ.
+    if [[ ! -f "$INSTALL_DIR/lib/liblzma.a" && -f "$XZ_DIR/src/liblzma/.libs/liblzma.a" ]]; then
+        cp -f "$XZ_DIR/src/liblzma/.libs/liblzma.a" "$INSTALL_DIR/lib/"
+    fi
+
+    if [[ ! -f "$INSTALL_DIR/include/lzma.h" && -f "$XZ_DIR/src/liblzma/api/lzma.h" ]]; then
+        cp -f "$XZ_DIR/src/liblzma/api/lzma.h" "$INSTALL_DIR/include/"
+    fi
+    popd
+    load_flags
+}
+
 function build_lib() {
     # Build project
     ZSTD_DIR=$SRC/zstd
     LZ_DIR=$SRC/lz4
+    XZ_DIR=$SRC/xz
     BZIP_DIR=$SRC/bzip2
     INSTALL_DIR=$WORK
 
-    if [ ! -d $INSTALL_DIR/lib ]; then
+    if [[ ! -d "$SRC/libmagic" || ! -d "$ZSTD_DIR" || ! -d "$LZ_DIR" || ! -d "$XZ_DIR" || ! -d "$BZIP_DIR" ]]; then
+        download
+    fi
+
+    mkdir -p $INSTALL_DIR/lib
+    mkdir -p $INSTALL_DIR/include
+
+    if [[ ! -f "$INSTALL_DIR/lib/libzstd.a" ]]; then
         build_zstd
+    fi
+
+    if [[ ! -f "$INSTALL_DIR/lib/liblz4.a" ]]; then
         build_lz4
+    fi
+
+    if [[ ! -f "$INSTALL_DIR/lib/liblz4.a" ]]; then
+        if [[ -f /usr/lib/x86_64-linux-gnu/liblz4.a ]]; then
+            cp -f /usr/lib/x86_64-linux-gnu/liblz4.a "$INSTALL_DIR/lib/"
+        elif [[ -f /usr/lib/x86_64-linux-gnu/liblz4.so ]]; then
+            cp -f /usr/lib/x86_64-linux-gnu/liblz4.so "$INSTALL_DIR/lib/"
+        fi
+    fi
+
+    if [[ ! -f "$INSTALL_DIR/lib/libbz2.a" ]]; then
         build_bzip2
     fi
 
+    if [[ ! -f "$INSTALL_DIR/lib/liblzma.a" ]]; then
+        build_xz
+    fi
+
+    if [[ ! -f "$INSTALL_DIR/lib/liblzma.a" ]]; then
+        if [[ -f /usr/lib/x86_64-linux-gnu/liblzma.a ]]; then
+            cp -f /usr/lib/x86_64-linux-gnu/liblzma.a "$INSTALL_DIR/lib/"
+        elif [[ -f /usr/lib/x86_64-linux-gnu/liblzma.so ]]; then
+            cp -f /usr/lib/x86_64-linux-gnu/liblzma.so "$INSTALL_DIR/lib/"
+        fi
+    fi
 
     cd $SRC/libmagic
     LIB_STORE_DIR=$SRC/libmagic/build/src/.libs

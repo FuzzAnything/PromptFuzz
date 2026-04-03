@@ -22,7 +22,6 @@ extra_c_flags:
   - /usr/local/lib/libabsl_log_internal_globals.a
   - /usr/local/lib/libabsl_random_internal_randen_hwaes.a
   - /usr/local/lib/libabsl_symbolize.a
-  - /usr/local/lib/libabsl_borrowed_fixup_buffer.a
   - /usr/local/lib/libabsl_demangle_rust.a
   - /usr/local/lib/libabsl_graphcycles_internal.a
   - /usr/local/lib/libabsl_log_internal_log_sink_set.a

@@ -33,7 +33,11 @@ function download() {
     git clone --depth 1 https://github.com/curl/curl-fuzzer.git
     git clone --depth 1 https://github.com/ngtcp2/sfparse
     pushd sfparse
-    git submodule update --init
+    if [[ -d munit && ! -d munit/.git ]]; then
+        rm -rf munit
+    fi
+    git submodule sync --recursive
+    git submodule update --init --recursive
     autoreconf -i
     ./configure
     make install
@@ -41,15 +45,18 @@ function download() {
 }
 
 
-function build_nghttp() {
+function build_sfparse() {
     save_flags
-    cd $NGHTTPDIR
-    # Build the library.
+    cd $SFPARSEDIR
+    if [[ -d munit && ! -d munit/.git ]]; then
+        rm -rf munit
+    fi
+    git submodule sync --recursive
+    git submodule update --init --recursive
     autoreconf -i
     ./configure --prefix=${INSTALLDIR} \
                 --disable-shared \
-                --enable-static \
-                --disable-threads --enable-lib-only
+                --enable-static
 
     make -j$(nproc)
     make install
@@ -78,12 +85,9 @@ function build_curl() {
         SSLOPTION=--without-ssl
     fi
 
-    if [[ -f ${INSTALLDIR}/lib/libnghttp2.a ]]
-    then
-        NGHTTPOPTION=--with-nghttp2=${INSTALLDIR}
-    else
-        NGHTTPOPTION=--without-nghttp2
-    fi
+
+    NGHTTPOPTION=--without-nghttp2
+    
 
     cd $CURLDIR
     ./buildconf
@@ -106,11 +110,17 @@ function build_curl() {
 }
 
 function build_lib() {
+    CURLDIR=$SRC/curl
+    NGHTTPDIR=$SRC/nghttp2
+    SFPARSEDIR=$SRC/sfparse
+
     export INSTALLDIR=$WORK
     rm -rf $INSTALLDIR
+    mkdir -p $INSTALLDIR
 
     LIB_STORE_DIR=$INSTALLDIR/lib
-    
+
+    build_sfparse
     build_curl
 }
 
@@ -166,5 +176,4 @@ function minimize_corpus() {
     mv minimize_corpus $LIB_BUILD/corpus
 }
 
-init_afl
-build_afl
+build_all
