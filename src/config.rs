@@ -171,9 +171,6 @@ pub struct Config {
     /// How number of round without new coverage is considered as converge. When the coverage reachs the converge, the fuzzing will stop. Set to 0 to disable the converge check.
     #[arg(long = "fc", default_value = "10")]
     pub fuzz_converge_round: usize,
-    /// number of cores used to parallely run the fuzzers.
-    #[arg(short, long, default_value = "1")]
-    pub cores: usize,
     /// The maximum of cpu cores used in the sanitization phase. Excelerate the validation speed. The value 0 means the number of available cpu cores.
     #[arg(short, long, default_value = "10")]
     pub max_cores: usize,
@@ -195,8 +192,7 @@ impl Config {
             temperature: 0.6,
             deepseek_reasoning: false,
             include_all_headers: false,
-            cores: 10,
-            max_cores: 0,
+            max_cores: 10,
             fuzz_round_succ: 1,
             fuzz_converge_round: 10,
             exponent_branch: false,

@@ -52,8 +52,6 @@ pub struct LibFuzzer {
     programs: Vec<PathBuf>,
     /// number of fuzzers coalesced to a huge fuzzer.
     batch: usize,
-    /// number of CPU cores used to parallelly transform.
-    core: usize,
     /// Deopt
     pub deopt: Deopt,
     /// whether transform drivers with constraints.
@@ -64,14 +62,12 @@ impl LibFuzzer {
     pub fn new(
         programs: Vec<PathBuf>,
         batch_size: usize,
-        core: usize,
         deopt: Deopt,
         use_constraint: bool,
     ) -> Self {
         Self {
             programs,
             batch: batch_size,
-            core,
             deopt,
             use_constraint,
         }
@@ -139,6 +135,8 @@ impl LibFuzzer {
             crate::program::infer::infer_constraints(&succ_programs, &self.deopt)?;
         }
 
+        let core = max_cpu_count();
+
         let mut test_corpus = vec![];
         let mut new_programs = vec![];
         for program in self.programs.iter() {
@@ -160,8 +158,8 @@ impl LibFuzzer {
             tasks.push(program.clone());
             task_corpus.push(corpora.to_path_buf());
 
-            if i % self.core == 0 || i == self.programs.len() {
-                executor.concurrent_transform(&tasks, self.core, true, &task_corpus)?;
+            if i % core == 0 || i == self.programs.len() {
+                executor.concurrent_transform(&tasks, core, true, &task_corpus)?;
                 tasks.clear();
                 task_corpus.clear();
                 log::debug!("transformed {i}/{}", self.programs.len());
@@ -922,9 +920,8 @@ mod tests {
             .iter()
             .collect();
         let programs = crate::deopt::utils::read_sort_dir(&test_dir)?;
-        let core = 10;
-        let batch_size = programs.len() / core;
-        let mut lib_fuzzer = LibFuzzer::new(programs, batch_size, core, deopt, true);
+        let batch_size = programs.len() / max_cpu_count();
+        let mut lib_fuzzer = LibFuzzer::new(programs, batch_size, deopt, true);
         lib_fuzzer.transform()?;
         lib_fuzzer.synthesis()?;
         lib_fuzzer.compile()?;

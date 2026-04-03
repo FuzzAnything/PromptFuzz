@@ -1,5 +1,5 @@
 use eyre::Result;
-use prompt_fuzz::execution::{max_cpu_count, Compile};
+use prompt_fuzz::execution::Compile;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
@@ -48,9 +48,6 @@ enum Commands {
         /// the number of condensed fuzzer you want to fuse
         #[arg(short, default_value = "1")]
         n_fuzzer: usize,
-        /// the count of cpu cores you could use
-        #[arg(short, default_value = "10")]
-        cpu_cores: usize,
         seed_dir: Option<PathBuf>,
     },
     /// Run a synthesized fuzzer in the fuzz dir.
@@ -189,7 +186,6 @@ fn fuse_fuzzer(
     project: String,
     seed_dir: &Option<PathBuf>,
     n_fuzzer: usize,
-    core: usize,
     use_cons: bool,
 ) -> Result<()> {
     let deopt = Deopt::new(project)?;
@@ -201,13 +197,7 @@ fn fuse_fuzzer(
     let programs = crate::deopt::utils::read_sort_dir(&test_dir)?;
     let batch_size = programs.len() / n_fuzzer;
 
-    let cpu_count = max_cpu_count();
-    let core = if core > cpu_count || core == 0 {
-        cpu_count
-    } else {
-        core
-    };
-    let mut lib_fuzzer = LibFuzzer::new(programs, batch_size, core, deopt, use_cons);
+    let mut lib_fuzzer = LibFuzzer::new(programs, batch_size, deopt, use_cons);
     lib_fuzzer.transform()?;
     lib_fuzzer.synthesis()?;
     lib_fuzzer.compile()?;
@@ -393,10 +383,9 @@ fn main() -> ExitCode {
         Commands::FuseFuzzer {
             use_cons,
             n_fuzzer,
-            cpu_cores,
             seed_dir,
         } => {
-            fuse_fuzzer(project, seed_dir, *n_fuzzer, *cpu_cores, *use_cons).unwrap();
+            fuse_fuzzer(project, seed_dir, *n_fuzzer, *use_cons).unwrap();
         }
         Commands::Minimize => {
             let deopt = Deopt::new(project).unwrap();

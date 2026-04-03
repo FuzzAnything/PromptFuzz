@@ -92,19 +92,12 @@ impl Fuzzer {
 
     pub fn transform_seeds_to_fuzzers(&self) -> Result<()> {
         let programs = crate::deopt::utils::read_sort_dir(&self.deopt.get_library_seed_dir()?)?;
-        let core = get_config().cores;
         let fuzzer_size = programs.len();
-        let mut libfuzzer = LibFuzzer::new(
-            programs.clone(),
-            fuzzer_size,
-            core,
-            self.deopt.clone(),
-            false,
-        );
+        let mut libfuzzer = LibFuzzer::new(programs.clone(), fuzzer_size, self.deopt.clone(), false);
         libfuzzer.transform()?;
         libfuzzer.synthesis()?;
         libfuzzer.compile()?;
-        let mut libfuzzer = LibFuzzer::new(programs, fuzzer_size, core, self.deopt.clone(), true);
+        let mut libfuzzer = LibFuzzer::new(programs, fuzzer_size, self.deopt.clone(), true);
         libfuzzer.transform()?;
         libfuzzer.synthesis()?;
         libfuzzer.compile()?;
