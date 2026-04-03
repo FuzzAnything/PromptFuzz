@@ -542,18 +542,28 @@ impl Transformer<'_> {
         worklist.push(&visitor.ast);
         let mut locs = Vec::new();
         let mut cur_comp_range: Option<(usize, usize)> = None;
-        let mut comp_stmts: Vec<(&ast::Node, Option<(usize, usize)>)> = vec![];
+        let mut cur_is_lambda = false;
+        let mut comp_stmts: Vec<(&ast::Node, Option<(usize, usize)>, bool)> = vec![];
 
         while !worklist.empty() || !comp_stmts.is_empty() {
             if worklist.empty() {
-                let (comp_stmt, comp_range) = comp_stmts.pop().unwrap();
+                let (comp_stmt, comp_range, is_lambda) = comp_stmts.pop().unwrap();
                 cur_comp_range = comp_range;
+                cur_is_lambda = is_lambda;
                 if comp_stmt.get_childs().is_empty() {
                     continue;
                 }
                 worklist.push_childs(comp_stmt.get_childs());
             }
             let curr = worklist.pop();
+            if let Clang::FunctionDecl(fd) = &curr.kind {
+                if fd.get_name() != "LLVMFuzzerTestOneInput" {
+                    continue;
+                }
+            }
+            if matches!(&curr.kind, Clang::CXXRecordDecl(_)) {
+                continue;
+            }
             // skip any body of CallExpr
             if let Clang::CallExpr(_) = &curr.kind {
                 continue;
@@ -565,10 +575,14 @@ impl Transformer<'_> {
                 let begin = get_sr_begin_loc(&cs.range)?.offset;
                 let end = get_sr_end_loc(&cs.range)?.offset;
                 let comp_range = Some((begin, end));
-                comp_stmts.push((curr, comp_range));
+                let is_lambda = cur_is_lambda || self.is_lambda_compound(begin)?;
+                comp_stmts.push((curr, comp_range, is_lambda));
                 continue;
             }
             if let Clang::ReturnStmt(re) = &curr.kind {
+                if cur_is_lambda {
+                    continue;
+                }
                 let loc = get_sr_begin_loc(&re.range)?.offset;
                 let end = get_sr_end_loc(&re.range)?.offset;
                 if loc == end {
@@ -592,6 +606,13 @@ impl Transformer<'_> {
         locs.dedup();
         locs.sort_by(|a, b| a.0.cmp(&b.0));
         Ok(locs)
+    }
+
+    fn is_lambda_compound(&self, begin: usize) -> Result<bool> {
+        let content = std::fs::read_to_string(&self.src_file)?;
+        let line_start = content[..begin].rfind('\n').map_or(0, |idx| idx + 1);
+        let prefix = &content[line_start..begin];
+        Ok(prefix.contains("[]("))
     }
 }
 
