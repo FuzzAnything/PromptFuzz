@@ -360,6 +360,7 @@ impl Deopt {
             for flag in flags {
                 cmd.arg(flag);
             }
+            cmd.arg("-L/usr/lib/x86_64-linux-gnu");
             log::debug!("{cmd:?}");
         }
         Ok(())
@@ -630,9 +631,7 @@ pub mod utils {
 
     /// create the directory if it does not exist
     pub fn create_dir_if_nonexist(path: &Path) -> Result<()> {
-        if !path.exists() {
-            std::fs::create_dir(path)?;
-        }
+        std::fs::create_dir_all(path)?;
         Ok(())
     }
 
