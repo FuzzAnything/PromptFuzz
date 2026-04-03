@@ -46,8 +46,20 @@ function build_lib() {
                 -DSQLITE_ENABLE_UNLOCK_NOTIFY "             
                
     ../configure --enable-shared=yes
-    make -j$(nproc)
-    make sqlite3.c
+
+    # With AFL++/LTO, build-time generators (for example lemon) can crash when
+    # instrumented. Keep target objects instrumented via CC/CFLAGS, but compile
+    # build tools with a plain host compiler through BCC.
+    if [[ "${CC:-}" == afl-* ]]; then
+        HOST_BCC="${HOST_CC:-clang} -O2 -g -fPIC"
+        rm -f lemon
+        make lemon BCC="$HOST_BCC"
+        make -j$(nproc) BCC="$HOST_BCC"
+        make sqlite3.c BCC="$HOST_BCC"
+    else
+        make -j$(nproc)
+        make sqlite3.c
+    fi
 }
 
 function build_oss_fuzz() {

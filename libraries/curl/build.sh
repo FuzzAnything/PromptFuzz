@@ -30,70 +30,16 @@ function download() {
     mkdir ${PROJECT_NAME}
     git clone --depth 1 https://github.com/curl/curl.git
     git clone --depth 1 https://github.com/nghttp2/nghttp2
-    git clone --depth 1 https://github.com/madler/zlib.git
-    git clone --depth 1 https://github.com/openssl/openssl
     git clone --depth 1 https://github.com/curl/curl-fuzzer.git
-    git clone --depth 1 https://github.com/facebook/zstd.git
-
-}
-
-function build_zlib() {
-    save_flags
-    cd $ZLIBDIR
-    ./configure --prefix=${INSTALLDIR} \
-                --static
-    export CC="${CC} -fPIC"
-    make
+    git clone --depth 1 https://github.com/ngtcp2/sfparse
+    pushd sfparse
+    git submodule update --init
+    autoreconf -i
+    ./configure
     make install
-    load_flags
+    popd
 }
 
-function build_openssl() {
-    save_flags
-    cd $OPENSSLDIR
-    # For i386, set a specific crosscompile mode
-    if [[ ${ARCHITECTURE} == "i386" ]]
-    then
-        ARCH_PROG="setarch i386"
-
-        # Disabled as per https://github.com/google/oss-fuzz/blob/master/projects/openssl/build.sh
-        EC_FLAG="no-threads"
-    else
-        ARCH_PROG=""
-        EC_FLAG="enable-ec_nistp_64_gcc_128"
-    fi
-
-    # For memory sanitizer, disable ASM.
-    if [[ ${SANITIZER} == "memory" ]]
-    then
-        ASM_FLAG="no-asm"
-    else
-        ASM_FLAG=""
-    fi
-    # Build the library.
-    ${ARCH_PROG} ./config --prefix=${INSTALLDIR} \
-                        --debug \
-                        enable-fuzz-libfuzzer \
-                        --with-fuzzer-lib=/usr/lib/libFuzzingEngine \
-                        -DPEDANTIC \
-                        -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION \
-                        no-shared \
-                        ${ASM_FLAG} \
-                        enable-tls1_3 \
-                        enable-rc5 \
-                        enable-md2 \
-                        enable-ssl3 \
-                        ${EC_FLAG} \
-                        enable-ssl3-method \
-                        enable-nextprotoneg \
-                        enable-weak-ssl-ciphers \
-                        $CFLAGS \
-                        ${OPENSSLFLAGS}
-
-    make -j$(nproc)
-    make install_sw
-    load_flags
-}
 
 function build_nghttp() {
     save_flags
@@ -110,17 +56,6 @@ function build_nghttp() {
     load_flags
 }
 
-function build_zstd() {
-    save_flags
-    pushd $ZSTD_DIR
-    rm -rf fuzz_build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTALLDIR -B fuzz_build -S build/cmake
-    cd fuzz_build
-    make -j$(nproc)
-    make install
-    popd
-    load_flags
-}
 
 function build_curl() {
     # Parse the options.
@@ -171,28 +106,11 @@ function build_curl() {
 }
 
 function build_lib() {
-    ZLIBDIR=$SRC/zlib
-    OPENSSLDIR=$SRC/openssl
-    NGHTTPDIR=$SRC/nghttp2
-    CURLDIR=$SRC/curl
-    ZSTD_DIR=$SRC/zstd
     export INSTALLDIR=$WORK
     rm -rf $INSTALLDIR
 
     LIB_STORE_DIR=$INSTALLDIR/lib
-
-    if [[ ${SANITIZER} != "memory" ]]
-    then
-        # Install openssl
-        export OPENSSLFLAGS="-fno-sanitize=alignment"
-    fi
     
-    if [ ! -d $INSTALLDIR/lib ]; then
-        build_zlib
-        build_openssl
-        build_nghttp
-        build_zstd
-    fi
     build_curl
 }
 
@@ -248,4 +166,5 @@ function minimize_corpus() {
     mv minimize_corpus $LIB_BUILD/corpus
 }
 
-build_all
+init_afl
+build_afl

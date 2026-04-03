@@ -34,8 +34,8 @@ function build_lib() {
 
     cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_STATIC=1 -DENABLE_SHARED=1 \
         -DCMAKE_C_FLAGS_RELWITHDEBINFO="-g -DNDEBUG" \
-        -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-g -DNDEBUG" -DCMAKE_INSTALL_PREFIX=$WORK/install \
-        -DWITH_FUZZ=1 -DFUZZ_BINDIR=$WORK/fuzzers -DFUZZ_LIBRARY=$LIB_FUZZING_ENGINE 
+        -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-g -DNDEBUG" -DCMAKE_INSTALL_PREFIX=$WORK/install #\
+        #-DWITH_FUZZ=1 -DFUZZ_BINDIR=$WORK/fuzzers -DFUZZ_LIBRARY=$LIB_FUZZING_ENGINE 
     make "-j$(nproc)" "--load-average=$(nproc)"
     make install
 }
@@ -68,3 +68,4 @@ function build_dict() {
 }
 
 build_all
+

@@ -36,6 +36,8 @@ git-fetch-with-cli = true' > $HOME/.cargo/config.toml
 
 # Install Dependency for easier development
 
+RUN apt-get install -y tmux vim bubblewrap bubblewrap rsync yasm
+
 RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git && \
     ln -s -f .tmux/.tmux.conf && \
     cp .tmux/.tmux.conf.local . && \
@@ -44,6 +46,12 @@ RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git &
     git submodule update --init --recursive && \
     ./setup.sh
 
-RUN apt-get install -y tmux vim bubblewrap bubblewrap rsync yasm
+git clone https://github.com/AFLplusplus/AFLplusplus.git /tmp/AFLplusplus && \
+     cd /tmp/AFLplusplus && \
+     sed -i 's|^#define USE_COLOR|/* #define USE_COLOR */|g' include/config.h && \
+     export LLVM_CONFIG=llvm-config && \
+     make all -j$(nproc) && \
+     make install && \
+     rm -rf /tmp/AFLplusplus
 
 WORKDIR /root/promptfuzz

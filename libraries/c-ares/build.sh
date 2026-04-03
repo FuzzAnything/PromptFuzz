@@ -17,7 +17,7 @@ function download() {
 function build_lib() {
     LIB_STORE_DIR=$SRC/c-ares/src/lib/.libs
     cd ${SRC}/c-ares
-    make distclean
+    #make distclean
     ./buildconf
     ./configure --enable-debug --disable-tests
     make clean

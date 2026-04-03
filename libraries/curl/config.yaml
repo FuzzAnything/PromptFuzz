@@ -5,6 +5,7 @@ ban:
   ~
 extra_c_flags: 
   - -lssl
+  - -lsfparse
   - -lnghttp2
   - -lz
   - -lzstd

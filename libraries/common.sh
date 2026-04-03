@@ -26,6 +26,17 @@ function init() {
     mkdir -p $OUT
 }
 
+function init_afl() {
+    mkdir -p ../../output/build
+    OUTPUT=$(realpath ../../output/build)
+    LIB_BUILD=${OUTPUT}/${PROJECT_NAME}
+    #rm -rf $LIB_BUILD
+    mkdir -p $LIB_BUILD
+    SRC=${LIB_BUILD}/src
+    WORK=${LIB_BUILD}/work
+    OUT=${LIB_BUILD}/out
+}
+
 #https://google.github.io/oss-fuzz/getting-started/new-project-guide/#static-and-dynamic-linking-of-libraries
 function san_env() {
     blue_echo "set ASan and UBSan env"
@@ -36,6 +47,19 @@ function san_env() {
     SANITIZER_FLAGS="-O2 -fsanitize=address,undefined -fsanitize-address-use-after-scope -g -fPIC"
     export CFLAGS="${CFLAGS:-} $SANITIZER_FLAGS"
     export CXXFLAGS="${CXXFLAGS:-} $SANITIZER_FLAGS"
+}
+
+function afl_env() {
+    blue_echo "set AFL env"
+    export CC=afl-clang-lto
+    export CXX=afl-clang-lto++
+    unset CFLAGS
+    unset CXXFLAGS
+    export AFL_USE_ASAN=1
+    export AFL_USE_UBSAN=1
+    AFL_FLAGS="-O2 -g -fPIC"
+    export CFLAGS="${CFLAGS:-} $AFL_FLAGS"
+    export CXXFLAGS="${CXXFLAGS:-} $AFL_FLAGS"
 }
 
 function sancov_env() {
@@ -168,6 +192,13 @@ function build_fuzzer() {
     copy_lib fuzzer
 }
 
+function build_afl() {
+    blue_echo "build with afl++"
+    afl_env
+    build_lib
+    copy_lib afl
+}
+
 function build_debug_fuzzer() {
     blue_echo "build with fuzzers"
     export CFLAGS="-O0 -g "
@@ -218,5 +249,6 @@ function build_all() {
     build_cov && \
     copy_include && \
     build_bc && \
+    build_afl && \
     write_magicbytes_to_dict 
 }

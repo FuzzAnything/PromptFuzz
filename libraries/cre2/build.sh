@@ -55,7 +55,7 @@ function build_lib() {
     pushd $SRC/cre2
     ./autogen.sh
     # build cre2
-    print "build cre2"
+    echo "build cre2"
     rm -rf build
     mkdir build
     cd build
@@ -111,3 +111,4 @@ function build_dict() {
 }
 
 build_all
+

@@ -17,12 +17,6 @@ rss_limit_mb: 0
 asan_option: allocator_may_return_null=1
 init: "
 extern \"C\" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  // write data into input_file.
-  FILE *in_file = fopen(\"input_file\", \"wb\");
-	if (in_file == NULL) {return 0;}
-	fwrite(data, sizeof(uint8_t), size, in_file);
-	fclose(in_file);
-
   // open input tiff in memory
   std::istringstream s(std::string(data, data + size));
   TIFF *in_tif = TIFFStreamOpen(\"MemTIFF\", &s);
