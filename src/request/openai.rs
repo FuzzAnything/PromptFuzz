@@ -217,7 +217,8 @@ impl CreateChatCompletionRequestExtra {
     pub fn with_deepseek_reason_body(request: CreateChatCompletionRequest) -> Self {
         let extra_body = serde_json::json!({
             "separate_reasoning": true,
-            "chat_template_kwargs": {"thinking": true}
+            "chat_template_kwargs": {"thinking": true},
+            "thinking": {"type": "enabled"}
         });
         //let extra_body = serde_json::json!({"reasoning": {"enabled": true}});
         Self { request, extra_body: extra_body}
