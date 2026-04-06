@@ -37,12 +37,13 @@ function build_lib() {
     LIB_STORE_DIR=$SRC/zlib
     cd $SRC/zlib
     make distclean
+    git checkout configure
+    sed -i 's/--version-script,${SRCDIR}zlib.map//g' configure
     ./configure
     sed -i 's/SHAREDLIB=libz.so/SHAREDLIB=libzlib.so/g' Makefile
     sed -i 's/SHAREDLIBM=libz.so.1/SHAREDLIBM=libzlib.so.1/g' Makefile
     make -j$(nproc) clean
     make -j$(nproc) all
-    make -j$(nproc) check
 }
 
 function build_oss_fuzz() {

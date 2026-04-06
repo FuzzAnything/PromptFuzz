@@ -9,9 +9,8 @@ DIR=$(pwd)
 
 
 function download() {
-    if [[ ! -z "${DOCKER_CONTAINER:-}" ]]; then
-        apt-get update && apt-get install -y cmake yasm wget
-    fi
+    apt-get update && apt-get install -y cmake yasm wget
+    
     cd $SRC
 
     git clone --depth 1 https://github.com/openssl/openssl.git
@@ -53,6 +52,7 @@ function build_lib() {
     else
         ./config $CONFIGURE_FLAGS
     fi
+    make clean
 
     # Build
     make -j$(nproc)

@@ -66,7 +66,7 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
     
     // Mount the working directory with read-write access
     //let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
-    cmd.arg("--bind").arg("/").arg("/");
+    cmd.arg("--bind").arg(Deopt::get_crate_dir().unwrap()).arg(Deopt::get_crate_dir().unwrap());
     
     // Pass through environment variables
     for (key, val) in extra_envs {
