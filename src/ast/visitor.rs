@@ -503,6 +503,7 @@ pub mod utils {
     fn get_call_arg_node_type(arg: &Node) -> String {
         match &arg.kind {
             Clang::ImplicitCastExpr(ic) => ic.r#type.get_type_name(),
+            Clang::CXXStaticCastExpr(csce) => csce.r#type.get_type_name(),
             Clang::CStyleCastExpr(ce) => ce.r#type.get_type_name(),
             Clang::IntegerLiteral(il) => il.r#type.get_type_name(),
             Clang::StringLiteral(sl) => sl.r#type.get_type_name(),
@@ -528,6 +529,10 @@ pub mod utils {
                     return ty;
                 }
                 unreachable!("{arg:#?}")
+            },
+            Clang::BinaryOperator(bo) => {
+                let inner = bo.get_lhs(arg);
+                return get_call_arg_node_type(inner);
             }
             _ => unimplemented!("{arg:#?}"),
         }

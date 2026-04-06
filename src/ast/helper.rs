@@ -158,7 +158,16 @@ impl CommomHelper for Node {
             Clang::UnaryExprOrTypeTraitExpr(ue) => get_source_code_range(&ue.range),
             Clang::CXXStaticCastExpr(cce) => get_source_code_range(&cce.range),
             Clang::ParenExpr(pe) => get_source_code_range(&pe.range),
-            _ => unimplemented!("{self:#?}"),
+            Clang::Other => {
+                if let Some(first) = self.inner.first() {
+                    let start = first.get_source_range()?.0;
+                    let end = self.inner.last().unwrap().get_source_range()?.1;
+                    Ok((start, end))
+                } else {
+                    eyre::bail!("Other node has no children: {self:#?}")
+                }
+            }
+            _ => eyre::bail!("get_source_range not implemented for: {self:#?}"),
         }
     }
 
