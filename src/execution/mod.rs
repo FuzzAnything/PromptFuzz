@@ -414,7 +414,7 @@ impl Executor {
         let extra_envs = vec![(OsStr::new("LLVM_PROFILE_FILE"), profraw.as_os_str())];
         let extra_args = vec![corpus_file.as_os_str(), OsStr::new("-runs=0")];
         let mut child = self.spawn(fuzzer_binary, extra_args, extra_envs, None, None, false);
-        let timeout = std::time::Duration::from_secs(crate::config::EXECUTION_TIMEOUT);
+        let timeout = std::time::Duration::from_secs(crate::config::COVERFAGE_TIMEOUT);
         let status = match child.wait_timeout(timeout).unwrap() {
             Some(status) => status.code(),
             None => {
@@ -524,7 +524,7 @@ impl Executor {
         let output = cmd.wait_with_output().expect("failed to wait for the process for symbolizing sancov file");
         if !output.status.success() {
             let err_msg = String::from_utf8_lossy(&output.stderr);
-            log::warn!("Error executing sancov for symbolization: {err_msg}");
+            log::warn!("Error executing sancov for symbolization: {err_msg}, sancov file: {sancov_file:?}");
             return Ok(None);
         }
         let sancov_info = serde_json::from_slice::<Sancov>(&output.stdout)?;
@@ -547,14 +547,28 @@ impl Executor {
         let sancov_dir = sancov_dir.to_path_buf().join(corpus_file_name);
         create_dir_if_nonexist(&sancov_dir)?;
         let extra_envs = vec![];
-        let mut cmd = wrap_command_with_bubblewrap(fuzzer_sancov, &vec![corpus_file.as_os_str().to_os_string()], &extra_envs, format!("coverage=1:coverage_dir={}", sancov_dir.to_string_lossy()).as_str(), &[]); 
-        let child = cmd
+        let mut cmd = wrap_command_with_bubblewrap(fuzzer_sancov, &vec![corpus_file.as_os_str().to_os_string()], &extra_envs, format!("coverage=1:coverage_dir=\"{}\"", sancov_dir.to_string_lossy()).as_str(), &[]); 
+        let mut child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        let output = child.wait_with_output().expect("failed to wait for the process for collecting sancov");
-        if !output.status.success() {
-            let err_msg: std::borrow::Cow<'_, str> = String::from_utf8_lossy(&output.stderr);
+            
+        let timeout = std::time::Duration::from_secs(10);
+        let status = match child.wait_timeout(timeout).unwrap_or(None) {
+            Some(status) => status,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                log::warn!("Error executing fuzzer for sancov collection: timeout after 10s");
+                return Ok(None);
+            }
+        };
+
+        if !status.success() {
+            let mut err_msg = String::new();
+            if let Some(mut stderr) = child.stderr.take() {
+                let _ = stderr.read_to_string(&mut err_msg);
+            }
             log::warn!("Error executing fuzzer for sancov collection: {err_msg}");
             return Ok(None);
         }
@@ -562,7 +576,7 @@ impl Executor {
         if let Some(sancov_file) = &sancov_file {
             Self::symbolize_sancov_file(fuzzer_sancov, &sancov_file)
         } else {
-            log::warn!("No sancov file found in directory: {sancov_dir:?}");
+            log::trace!("No sancov file found in directory: {sancov_dir:?}");
             Ok(None)
         }
     }
@@ -571,6 +585,7 @@ impl Executor {
     pub fn collect_sancov_from_corpus(fuzzer_sancov: &Path, corpus: &Path) -> Result<HashMap<PathBuf, Sancov>> {
         let fuzzer_dir = get_file_dirname(fuzzer_sancov);
         let sancov_dir: PathBuf = [fuzzer_dir, "sancov".into()].iter().collect();
+        std::fs::remove_dir_all(&sancov_dir).ok();
         crate::deopt::utils::create_dir_if_nonexist(&sancov_dir)?;
 
         let corpus_files = crate::deopt::utils::read_all_files_in_dir(corpus)?;
@@ -617,7 +632,7 @@ impl Executor {
         minimize: &Path,
         corpus: &Path,
     ) -> Result<()> {
-        log::trace!("merge corpus {corpus:?} to {minimize:?}");
+        log::debug!("Sancov: minimizing corpus {corpus:?} to {minimize:?}");
         crate::deopt::utils::create_dir_if_nonexist(minimize)?;
 
         let sancov_dict = Self::collect_sancov_from_corpus(fuzzer_sancov, corpus)?;
@@ -626,14 +641,15 @@ impl Executor {
             return Ok(());
         }
 
+        let sancov_dict_size = sancov_dict.len();
         let selected_corpus = Self::select_corpus_by_examining_sancov(sancov_dict);
-        for file in selected_corpus {
+        for file in &selected_corpus {
             let file_name = file.file_name().unwrap();
             let dest = minimize.join(file_name);
-            std::fs::copy(&file, &dest)?;
+            let _ = std::fs::copy(&file, &dest);
             log::trace!("Selected file {file:?} for minimization, copied to {dest:?}");
         }
-
+        log::debug!("Minimization completed. Selected {} files out of {}.", selected_corpus.len(), sancov_dict_size);
         Ok(())
     }
 

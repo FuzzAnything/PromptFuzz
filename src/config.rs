@@ -35,6 +35,8 @@ pub const FDP_PATH: &str = "src/extern";
 // Program check options
 pub const EXECUTION_TIMEOUT: u64 = 180;
 
+pub const COVERFAGE_TIMEOUT: u64 = 10;
+
 pub const SANITIZATION_TIMEOUT: u64 = 1200;
 
 pub const MIN_FUZZ_TIME: u64 = 60;
@@ -136,7 +138,7 @@ pub fn parse_config() -> eyre::Result<()> {
     }
     let lib = deopt.get_library_build_lib_path()?;
     if !lib.exists() {
-        eyre::bail!("Cannot find the build library {} in `output/build` dir, please build it by build.sh in anvance.", deopt.config.project_name);
+        eyre::bail!("Cannot find the build library {} in `{}` dir, please build it by build.sh in anvance.", deopt.config.project_name, Deopt::get_crate_build_dir()?.display());
     }
     Ok(())
 }
@@ -181,7 +183,10 @@ pub struct Config {
     pub recheck: bool,
     /// Run condensed fuzzers after the fuzz loop
     #[arg(long, default_value = "false")]
-    pub fuzzer_run: bool
+    pub fuzzer_run: bool,
+    /// The output directory for the fuzzer generated files
+    #[arg(short, long, default_value = "output")]
+    pub output: String,
 }
 
 impl Config {
@@ -200,6 +205,7 @@ impl Config {
             fuzzer_run: false,
             disable_power_schedule: false,
             disable_coverage_check: true,
+            output: "output".to_string(),
         };
         let _ = CONFIG_INSTANCE.set(RwLock::new(config));
         crate::init_debug_logger().unwrap();

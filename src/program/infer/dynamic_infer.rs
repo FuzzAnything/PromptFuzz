@@ -173,7 +173,9 @@ fn infer_constraint_for_func_by_value(
     let (program, binary) = transformer.get_infer_program();
 
     let executor = Executor::new(deopt)?;
-    let corpus = deopt.get_library_shared_corpus_dir()?;
+    let work_seed = deopt.get_work_seed_by_id(program_id)?;
+    let work_dir = get_file_dirname(&work_seed);
+    let corpus: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
     executor.compile(vec![&program], &binary, crate::execution::Compile::FUZZER)?;
 
     let has_err = executor.execute_pool(&binary, &corpus);
@@ -341,18 +343,8 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
         }
     }
 
-    // minimize the shared corpus first to reduce time cost.
+    // use the minimized corpus to reduce time cost.
     let corpus_dir: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
-    if corpus_dir.exists() {
-        std::fs::remove_dir_all(&corpus_dir)?;
-    }
-    let fuzzer_bin = fuzzer_code.with_extension("sancov");
-    executor.minimize_corpus_by_efficient_sancov(
-        &fuzzer_bin,
-        &corpus_dir,
-        &executor.deopt.get_library_shared_corpus_dir()?,
-    )?;
-
     let corpus_files = crate::deopt::utils::read_all_files_in_dir(&corpus_dir)?;
 
     let mut max_branch = 0;

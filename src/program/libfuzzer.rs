@@ -16,7 +16,6 @@ use std::sync::RwLock;
 /// LibFuzzer's integeration: tranformation, synthesis, execution and sanitizaiton
 use std::path::{Path, PathBuf};
 use std::process::Child;
-use threadpool::ThreadPool;
 
 use super::shim::{FuzzerShim, Integer};
 use super::Program;
@@ -125,6 +124,31 @@ impl LibFuzzer {
         Ok(())
     }
 
+    fn minimize_fuzzer_corpus_before_constraint_infer(&self, program_path: &Path) -> Result<PathBuf> {
+        let executor = Executor::new(&self.deopt)?;
+        let program = Program::load_from_path(program_path)?;
+        let work_seed = self.deopt.get_work_seed_by_id(program.id)?;
+        let fuzzer_sancov = work_seed.to_path_buf().with_extension("sancov");
+        executor.compile(vec![program_path], &fuzzer_sancov, crate::execution::Compile::Minimize)?;
+
+        let work_dir = deopt::utils::get_file_dirname(&work_seed);
+        let minimized: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
+        if minimized.exists() {
+            let _ = std::fs::remove_dir_all(&minimized);
+        }
+        let shared_corpus = self.deopt.get_library_shared_corpus_dir()?;
+        executor.minimize_corpus_by_efficient_sancov(&fuzzer_sancov, &minimized, &shared_corpus)?;
+        Ok(minimized)
+    }
+
+    fn init_corpus_before_constraint_infer(&self, succ_programs: &Vec<PathBuf>) -> Result<()> {
+        log::info!("Initialize the corpus for constraint inference!");
+        for program in succ_programs {
+            let _ = self.minimize_fuzzer_corpus_before_constraint_infer(program)?;
+        }
+        Ok(())
+    }
+
     // transform the programs be more exploitable.
     // transform all array/scalar arguments be fuzzable and consider their constraints.
     fn exploit_transform(&mut self) -> Result<()> {
@@ -132,6 +156,7 @@ impl LibFuzzer {
         if crate::program::infer::load_constraints(&self.deopt).is_err() {
             let succ_programs =
                 crate::deopt::utils::read_sort_dir(&self.deopt.get_library_succ_seed_dir()?)?;
+            self.init_corpus_before_constraint_infer(&succ_programs)?;
             crate::program::infer::infer_constraints(&succ_programs, &self.deopt)?;
         }
 
@@ -169,7 +194,6 @@ impl LibFuzzer {
     }
 
     pub fn synthesis(&mut self) -> Result<()> {
-        self.minimize_fuzzers_corpus()?;
         log::info!("synthesis huge fuzzers!");
         let driver_dir = self.deopt.get_library_driver_dir()?;
         let drivers: Vec<PathBuf> = deopt::utils::read_sort_dir(&driver_dir)?
@@ -373,44 +397,16 @@ impl LibFuzzer {
                     &fuzzer_binary,
                     crate::execution::Compile::FUZZER,
                 )?;
+                let fuzzer_sancov = fuzzer_binary.with_extension("sancov");
+                executor.compile_lib_fuzzers(
+                    &fuzzer_dir,
+                    &fuzzer_sancov,
+                    crate::execution::Compile::Minimize,
+                )?;
                 self.deopt.copy_library_init_file(&fuzzer_dir)?;
             }
         }
         Ok(())
-    }
-
-    fn minimize_fuzzers_corpus(&self) -> Result<()> {
-        let seed_dir = self.deopt.get_library_seed_dir()?;
-        let seeds = crate::deopt::utils::read_sort_dir(&seed_dir)?;
-        let pool = ThreadPool::new(max_cpu_count() / 2);
-        let num_seeds = seeds.len();
-        for (i, seed) in seeds.iter().enumerate() {
-            let libfuzzer = self.clone();
-            let seed = seed.clone();
-            pool.execute(move || {
-                libfuzzer.minimize_fuzzer_corpus(&seed).unwrap();
-                log::debug!("minimize seed corpus: {i}/{num_seeds}");
-            })
-        }
-        pool.join();
-        Ok(())
-    }
-
-    fn minimize_fuzzer_corpus(&self, seed: &Path) -> Result<PathBuf> {
-        let executor = Executor::new(&self.deopt)?;
-        let seed = Program::load_from_path(seed)?;
-        let work_seed = self.deopt.get_work_seed_by_id(seed.id)?;
-        executor.compile_seed(seed.id)?;
-
-        let work_dir = deopt::utils::get_file_dirname(&work_seed);
-        let minimized: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
-        if minimized.exists() {
-            std::fs::remove_dir_all(&minimized)?;
-        }
-        let shared_corpus = self.deopt.get_library_shared_corpus_dir()?;
-        let binary_out = work_seed.with_extension("sancov");
-        executor.minimize_corpus_by_efficient_sancov(&binary_out, &minimized, &shared_corpus)?;
-        Ok(minimized)
     }
 
     fn get_minimized_corpus(&self, driver: &Path) -> Result<PathBuf> {
@@ -862,7 +858,7 @@ pub mod sanitize_crash {
             }
             let (trap_call, trap_loc) =
                 parse_call_stack_line(line).context(format!("error when parse line: {line}"))?;
-            if !trap_loc.contains("llm_fuzz/output/build") {
+            if !trap_loc.contains(&crate::deopt::Deopt::get_crate_build_dir()?.to_string_lossy().to_string()) {
                 continue;
             }
             if trap_call.contains("LLVMFuzzerTestOneInput") {

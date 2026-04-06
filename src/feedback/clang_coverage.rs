@@ -398,7 +398,7 @@ impl Executor {
             .arg(binary_cov)
             .arg(format!("--instr-profile={}", profdata.to_string_lossy()))
             .arg("-format=lcov")
-            .arg("--ignore-filename-regex=.*output/build/.*")
+            .arg(format!("--ignore-filename-regex=.*{}.*", crate::deopt::Deopt::get_crate_build_dir()?.to_string_lossy()))
             .stdout(Stdio::piped())
             .output()?;
         if !output.status.success() {
@@ -443,11 +443,11 @@ impl Executor {
             &fuzzer_binary,
             crate::execution::Compile::FUZZER,
         )?;
-        //self.compile_lib_fuzzers(
-        //    fuzzer_dir,
-        //    &fuzzer_binary,
-        //    crate::execution::Compile::Minimize,
-        //)?;
+        self.compile_lib_fuzzers(
+            fuzzer_dir,
+            &fuzzer_sancov,
+            crate::execution::Compile::Minimize,
+        )?;
         let corpus: PathBuf = [PathBuf::from(fuzzer_dir), "corpus".into()]
             .iter()
             .collect();
@@ -764,6 +764,23 @@ mod tests {
             ]
         );
         assert_eq!(gsv.compute_line_coverage(), 1_f32);
+        Ok(())
+    }
+
+    #[test]
+    fn test_ccollect_lib_cov_per_fuzzer() -> Result<()> {
+        crate::config::Config::init_test("cJSON");
+        let deopt = Deopt::new("cJSON".to_string())?;
+        let executor = Executor::new(&deopt)?;
+        let fuzzer_dir: PathBuf = [
+            crate::Deopt::get_crate_dir()?,
+            "testsuites",
+            "fuzzers",
+            "cjson_fuzzer",
+        ]
+        .iter()
+        .collect();
+        executor.collect_lib_cov_per_fuzzer(&fuzzer_dir)?;
         Ok(())
     }
 

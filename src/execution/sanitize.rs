@@ -271,6 +271,7 @@ impl Executor {
                 intrestings.push(corpus_file);
             }
         }
+        log::debug!("Find {} new interesting corpus files to evolve the corpus.", intrestings.len());
         self.deopt.copy_file_to_shared_corpus(intrestings)?;
         let buf = serde_json::to_vec(&global_featuers)?;
         std::fs::write(global_feature_file, buf)?;
@@ -432,7 +433,7 @@ mod tests {
         //let work_path = deopt.get_work_seed_by_id(0)?;
         //std::fs::copy(program_path, &work_path)?;
         let executor = Executor::new(&deopt)?;
-        let res = executor.check_program_is_correct(&deopt.get_work_seed_by_id(1)?);
+        let res = executor.check_program_is_correct(&deopt.get_work_seed_by_id(0)?);
         println!("{res:?}");
         Ok(())
     }

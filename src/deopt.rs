@@ -110,13 +110,18 @@ impl Deopt {
 
     /// get the output directory of this crate.
     pub fn get_crate_output_dir() -> Result<PathBuf> {
-        let out_dir: PathBuf = [Deopt::get_crate_dir()?, "output"].iter().collect();
+        let output = crate::config::get_config().output.clone();
+        let out_dir: PathBuf = if output == "output" {
+            [Deopt::get_crate_dir()?, "output"].iter().collect()
+        } else {
+            PathBuf::from(output)
+        };
         utils::create_dir_if_nonexist(&out_dir)?;
         Ok(out_dir)
     }
 
     pub fn get_crate_build_dir() -> Result<PathBuf> {
-        let build_dir: PathBuf = [Deopt::get_crate_output_dir()?, "build".into()]
+        let build_dir: PathBuf = [Deopt::get_crate_dir()?, "output", "build"]
             .iter()
             .collect();
         utils::create_dir_if_nonexist(&build_dir)?;
