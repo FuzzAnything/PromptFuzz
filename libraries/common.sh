@@ -238,6 +238,22 @@ function load_flags() {
     export CXXFLAGS=$OLD_CXXFLAGS
 }
 
+# Minimize corpus to 500 files if it has more than 500 files, because promptfuzz will read all files in corpus at startup and it may cause too slow sanitization if corpus is too large.
+function minimize_corpus() {
+    blue_echo "minimize corpus"
+    for corpus_dir in "${LIB_BUILD}/corpus"; do
+        if [ -d "$corpus_dir" ]; then
+            cd "$corpus_dir"
+            file_count=$(find . -type f | wc -l)
+            if [ "$file_count" -gt 500 ]; then
+                blue_echo "$(basename $corpus_dir) size $file_count > 500, minimizing to 500..."
+                find . -type f -print0 | sort -z | awk -v RS='\0' -v ORS='\0' 'NR>500' | xargs -0 rm -f
+            fi
+            cd - > /dev/null
+        fi
+    done
+}
+
 function build_all() {
     init && \
     download && \
@@ -245,6 +261,7 @@ function build_all() {
     build_fuzzer && \
     build_debug_fuzzer &&\
     build_corpus && \
+    minimize_corpus && \
     build_dict && \
     build_cov && \
     copy_include && \

@@ -65,6 +65,12 @@ def get_project_include_dir(project_name: str):
         raise FileNotFoundError(f"Include directory {include_dir} does not exist.")
     return include_dir
 
+def get_3rd_party_lib_dirs(project_name: str) -> str | None:
+    entry = f"{BUILD_DIR}/{project_name}/work//lib"
+    if os.path.exists(entry):
+        return entry
+    return None
+
 def compile_afl_fuzzer(project_name):
     # Placeholder for the actual compilation logic
     print(f"Compiling AFL fuzzer for project: {project_name}")
@@ -84,6 +90,8 @@ def compile_afl_fuzzer(project_name):
         "-fsanitize=address,fuzzer,undefined",
         "-o", f"afl_fuzzer",
     ]
+    if get_3rd_party_lib_dirs(project_name):
+        cmd.append(f"-L{get_3rd_party_lib_dirs(project_name)}")
     cmd.extend([os.path.join(fuzzer_dir, f) for f in cc_files])
     extra_flags = load_compilation_extra_flags(project_name)
     if extra_flags:
@@ -96,6 +104,8 @@ def compile_afl_fuzzer(project_name):
         raise RuntimeError("AFL fuzzer compilation failed.")
     else:
         print("AFL fuzzer compiled successfully.")
+        print("Run the fuzzer with the following command: `afl-fuzz -i corpus -o output -V 86400 -t 10000 -- ./afl_fuzzer`")
+        print("If you are testing network libraries, please using brwap to isolate the netwrok: `bwrap --bind / / --dev /dev --proc /proc --unshare-net -- afl-fuzz -i corpus -o output -V 86400 -t 10000 -- ./afl_fuzzer`")
 
 def compile_cov_fuzzer(project_name):
         # Placeholder for the actual compilation logic
