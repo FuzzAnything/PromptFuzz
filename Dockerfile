@@ -1,5 +1,7 @@
 FROM ubuntu:22.04
 
+ENV TZ=Asia/Shanghai
+
 ENV PATH=/lib/llvm-18/bin:/usr/local/cargo/bin:/root/.cargo/bin:$PATH \ 
     LD_LIBRARY_PATH=/lib/llvm-18/lib \
     RUSTUP_HOME=/usr/local/rustup \
@@ -46,7 +48,7 @@ RUN cd /root && git clone --single-branch https://github.com/gpakosz/.tmux.git &
     git submodule update --init --recursive && \
     ./setup.sh
 
-git clone https://github.com/AFLplusplus/AFLplusplus.git /tmp/AFLplusplus && \
+RUN git clone https://github.com/AFLplusplus/AFLplusplus.git /tmp/AFLplusplus && \
      cd /tmp/AFLplusplus && \
      sed -i 's|^#define USE_COLOR|/* #define USE_COLOR */|g' include/config.h && \
      export LLVM_CONFIG=llvm-config && \
