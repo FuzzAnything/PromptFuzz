@@ -90,7 +90,7 @@ function build_curl() {
     
 
     cd $CURLDIR
-    ./buildconf
+    autoreconf -fi
     rm -rf build
     mkdir -p build
     cd build
