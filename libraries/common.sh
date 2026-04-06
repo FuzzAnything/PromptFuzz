@@ -241,7 +241,7 @@ function load_flags() {
 # Minimize corpus to 500 files if it has more than 500 files, because promptfuzz will read all files in corpus at startup and it may cause too slow sanitization if corpus is too large.
 function minimize_corpus() {
     blue_echo "minimize corpus"
-    for corpus_dir in "${LIB_BUILD}/corpus" "${LIB_BUILD}/shared_corpus"; do
+    for corpus_dir in "${LIB_BUILD}/corpus"; do
         if [ -d "$corpus_dir" ]; then
             cd "$corpus_dir"
             file_count=$(find . -type f | wc -l)
