@@ -11,19 +11,19 @@ set -e
 set -x
 
 function download() {
-    if [[ ! -z "${DOCKER_CONTAINER:-}" ]]; then
-        apt-get update
-        apt-get install -y make \
-                        autoconf \
-                        automake \
-                        libtool \
-                        libgmp-dev \
-                        libssl-dev \
-                        zlib1g-dev \
-                        pkg-config \
-                        libzstd-dev \
-                        wget
-    fi
+    
+    apt-get update
+    apt-get install -y make \
+                    autoconf \
+                    automake \
+                    libtool \
+                    libgmp-dev \
+                    libssl-dev \
+                    zlib1g-dev \
+                    pkg-config \
+                    libzstd-dev \
+                    wget
+    
 
     cd $SRC
 

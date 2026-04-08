@@ -10,7 +10,7 @@ docker build -t promptfuzz .
 Start the docker container in daemon mode:
 ```
 CONTAINER_NAME=<YOUR_CONTAINER_NAME>
-docker run -itd --init -v $(pwd):/root/promptfuzz:Z --security-opt seccomp=unconfined --cap-add SYS_ADMIN --cap-add NET_ADMIN --name ${CONTAINER_NAME} promptfuzz /bin/bash
+docker run -itd --init -v $(pwd):/root/promptfuzz:Z --security-opt seccomp=unconfined --security-opt apparmor=unconfined --cap-add SYS_ADMIN --cap-add NET_ADMIN --name ${CONTAINER_NAME} promptfuzz /bin/bash
 ```
 Then, attach into the docker container:
 ```
