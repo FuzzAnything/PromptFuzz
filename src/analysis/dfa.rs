@@ -190,6 +190,12 @@ impl<T: SymbolData> Analyzer<T> {
             return Ok(());
         } else if let ast::Clang::RecordDecl(_) = &stmt.kind {
             return Ok(());
+        } else if let ast::Clang::TypedefDecl(_) = &stmt.kind {
+            return Ok(());
+        } else if let ast::Clang::EnumDecl(_) = &stmt.kind {
+            return Ok(());
+        } else if let ast::Clang::Other = &stmt.kind {
+            return Ok(());
         }
         eyre::bail!("Visit VarDecl, but visited {stmt:?}")
     }

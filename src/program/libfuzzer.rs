@@ -296,6 +296,11 @@ impl LibFuzzer {
         in_corpus_dir: &Path,
         out_corpus_dir: &Path,
     ) -> Result<()> {
+        if !std::fs::exists(in_corpus_dir)? {
+            log::warn!("Corpus directory doesn't exist: {in_corpus_dir:?}, skip it and continue...");
+            return Ok(())
+        }
+
         let files = crate::deopt::utils::read_all_files_in_dir(in_corpus_dir)?;
         for file in &files {
             let lib_corpus = std::fs::read(file)?;
