@@ -128,17 +128,17 @@ impl Dependency {
                 Taintkind::Arg(arg) => {
                     return Ok(Dependency::CallRet(*arg));
                 }
-                _ => eyre::bail!("dest taint kind must be Arg. Src_kind: {src_kind:#?}, dest_kind: {dest_kind:#?}"),
+                _ => return Ok(Dependency::Other),
             }
         } else if let Taintkind::Arg(from_arg) = src_kind {
             match dest_kind {
                 Taintkind::Arg(to_arg) => {
                     return Ok(Dependency::ArgShare(*from_arg, *to_arg));
                 }
-                _ => eyre::bail!("dest taint kind must be Arg: {dest_kind:#?}"),
+                _ => return Ok(Dependency::Other),
             }
         }
-        eyre::bail!("src taint kind must be Call or Arg")
+        Ok(Dependency::Other)
     }
 }
 
@@ -651,6 +651,9 @@ impl ADGBuilder {
             (src_node, dest_node)
         };
         let dependency = Dependency::from(&src.kind, &dest.kind)?;
+        if dependency == Dependency::Other {
+            return Ok(());
+        }
         self.adg.add_edge(src_node, dest_node, dependency);
         Ok(())
     }
