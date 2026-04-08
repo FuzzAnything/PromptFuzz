@@ -176,7 +176,9 @@ fn infer_constraint_for_func_by_value(
     let work_seed = deopt.get_work_seed_by_id(program_id)?;
     let work_dir = get_file_dirname(&work_seed);
     let corpus: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
-    executor.compile(vec![&program], &binary, crate::execution::Compile::FUZZER)?;
+    if let Err(_) = executor.compile(vec![&program], &binary, crate::execution::Compile::FUZZER) {
+        return Ok(None);
+    }
 
     let has_err = executor.execute_pool(&binary, &corpus);
     if let Some(err) = has_err {
