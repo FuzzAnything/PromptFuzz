@@ -10,7 +10,7 @@ PromptFuzz is currently regarded as the leading approach for generating fuzz dri
 
 
 ## Relase Notes:
-- Release V1.0.0. Support [AFLPlusPlus](AFLPlusPlus.md), more libraries and fixed many panic bugs! (2026-04-10)
+- Release [v1.0.0](https://github.com/FuzzAnything/PromptFuzz/releases/tag/v1.0.0). Support [AFLPlusPlus](AFLPlusPlus.md), more libraries and fixed many panic bugs! (2026-04-10)
 - Upgrade **Clang** and **LLVM** versions to 18! (2025-06-07)
 - Upgrade **async_openai** sdk version to 0.28 to support OPENAI interface new features. (2025-06-05)
 - Support **OpenAI specification**! You can use any LLMs via the standard OPENAI specification. （2025-05-02)
