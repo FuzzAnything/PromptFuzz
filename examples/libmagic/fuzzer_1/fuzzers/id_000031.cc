@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,121 +7,159 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1396
-//<Prompt> ["vpx_write_tpl_gop_stats","vpx_codec_control_","vpx_read_tpl_gop_stats","vpx_codec_enc_config_default","vpx_codec_enc_init_multi_ver","vpx_codec_get_stream_info","vpx_img_alloc","vpx_codec_dec_init_ver","vpx_codec_set_frame_buffer_functions"]
-/*<Combination>: [vpx_codec_err_t vpx_write_tpl_gop_stats(FILE * tpl_file, const VpxTplGopStats * tpl_gop_stats),
-    vpx_codec_err_t vpx_codec_control_(vpx_codec_ctx_t * ctx, int ctrl_id),
-    vpx_codec_err_t vpx_read_tpl_gop_stats(FILE * tpl_file, VpxTplGopStats * tpl_gop_stats),
-    vpx_codec_err_t vpx_codec_enc_config_default(vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, unsigned int usage),
-    vpx_codec_err_t vpx_codec_enc_init_multi_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, int num_enc, vpx_codec_flags_t flags, vpx_rational_t * dsf, int ver),
-    vpx_codec_err_t vpx_codec_get_stream_info(vpx_codec_ctx_t * ctx, vpx_codec_stream_info_t * si),
-    vpx_image_t *vpx_img_alloc(vpx_image_t * img, vpx_img_fmt_t fmt, unsigned int d_w, unsigned int d_h, unsigned int align),
-    vpx_codec_err_t vpx_codec_dec_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_dec_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_err_t vpx_codec_set_frame_buffer_functions(vpx_codec_ctx_t * ctx, vpx_get_frame_buffer_cb_fn_t cb_get, vpx_release_frame_buffer_cb_fn_t cb_release, void * cb_priv)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 651
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 5.3333335, nr_unique_branch: 1
-//<Quality> {"density":8,"unique_branches":{"vpx_write_tpl_gop_stats":[[34,27,34,48,0,0,4,0]]},"library_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_img_alloc","vpx_codec_encode","vpx_codec_get_stream_info","vpx_write_tpl_gop_stats","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_img_alloc","vpx_codec_encode","vpx_codec_get_stream_info","vpx_write_tpl_gop_stats","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"visited":2}
+//<score> 40, nr_unique_branch: 10
+//<Quality> {"density":10,"unique_branches":{"file_buffer":[[388,7,388,8,0,0,4,0],[389,8,389,26,0,0,4,0]],"is_tar":[[136,6,136,19,0,0,4,1],[139,6,140,40,0,0,4,1],[143,6,144,40,0,0,4,0]],"file_is_tar":[[78,6,78,13,0,0,4,1],[78,17,78,24,0,0,4,1],[81,6,81,33,0,0,4,1],[84,6,85,29,0,0,4,1],[84,28,84,32,0,0,4,1]]},"library_calls":["magic_open","magic_getpath","magic_getflags","magic_setparam","magic_load_buffers","magic_getparam","magic_error","magic_list","magic_file","magic_file","magic_close"],"critical_calls":["magic_open","magic_getpath","magic_getflags","magic_setparam","magic_load_buffers","magic_getparam","magic_error","magic_list","magic_file","magic_file","magic_close"],"visited":0}
 /**/
 
 
+// Include libmagic header if available
+#ifdef HAVE_MAGIC_H
+#else
+// Forward declarations for libmagic types and functions
+struct magic_set;
+typedef struct magic_set* magic_t;
+
+extern "C" {
+magic_t magic_open(int);
+void magic_close(magic_t);
+const char* magic_getpath(const char*, int);
+int magic_load_buffers(magic_t, void**, size_t*, size_t);
+int magic_getflags(magic_t);
+int magic_setparam(magic_t, int, const void*);
+int magic_getparam(magic_t, int, void*);
+const char* magic_error(magic_t);
+int magic_list(magic_t, const char*);
+const char* magic_file(magic_t, const char*);
+}
+#endif
+
 extern "C" int LLVMFuzzerTestOneInput_31(const uint8_t* f_data, size_t f_size) {
-	if(f_size<60) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_4, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_5, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_6, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_7, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_8, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-  // Create a FILE * variable to read the input data
-  FILE *in_file = fmemopen((void *)data, size, "rb");
-  if (in_file == NULL) {
-    assert_file_closed(&in_file);
+
+    // Early return for insufficient data
+    if (size < 2) {
 	return 0;
-  }
-
-  // Create a FILE * variable to write output data
-  FILE *out_file = fopen("output_file", "wb");
-  if (out_file == NULL) {
+	}
+	
+    
+    // Create a temporary file with input data
+    FILE* in_file = fmemopen((void*)data, size, "rb");
+    if (!in_file) {
+	assert_file_closed(&in_file);
+	return 0;
+	}
+	
+    
+    // Get file descriptor for input file
+    int fd = fuzz_fileno(in_file);
+    if (fd < 0) {
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	assert_fd_closed(fd);
+	return 0;
+    }
+    
+    // Create magic cookie with flags
+    magic_t cookie = magic_open(MAGIC_NONE);
+    if (!cookie) {
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	assert_fd_closed(fd);
+	return 0;
+    }
+    
+    // Try to get default magic database path
+    const char* magic_path = magic_getpath(nullptr, 0);
+    
+    // Get current flags
+    int current_flags = magic_getflags(cookie);
+    
+    // Set a parameter (example: buffer size parameter if available)
+    // Note: Actual parameter numbers may vary; using 0 as placeholder
+    size_t param_value = 1024;
+    magic_setparam(cookie, 0, &param_value);
+    
+    // Prepare buffer for magic database loading
+    // Split input data: first half for magic buffer, second half for testing
+    size_t split_point = size / 2;
+    void* magic_buffer = (void*)data;
+    size_t magic_size = split_point;
+    
+    void* buffers[] = { magic_buffer };
+    size_t sizes[] = { magic_size };
+    
+    // Load magic database from buffer
+    int load_result = magic_load_buffers(cookie, buffers, sizes, 1);
+    
+    // Get parameter back to verify
+    size_t retrieved_param = 0;
+    magic_getparam(cookie, 0, &retrieved_param);
+    
+    // Check for errors
+    const char* error_msg = magic_error(cookie);
+    
+    // Create output file for magic_list
+    FILE* out_file = fopen("output_file", "wb");
+    if (out_file) {
+        // List magic entries to file
+        magic_list(cookie, "output_file");
+        assert_file_closed(&out_file);;
+    }
+    
+    // Test file identification on input file
+    rewind(in_file);
+    const char* file_type = magic_file(cookie, "input_file");
+    
+    // Write input data to a file for magic_file to read
+    FILE* test_file = fopen("input_file", "wb");
+    if (test_file) {
+        fwrite(data + split_point, 1, size - split_point, test_file);
+        assert_file_closed(&test_file);;
+        
+        // Try to identify the file type
+        file_type = magic_file(cookie, "input_file");
+        
+        // Clean up temporary file
+        remove("input_file");
+    }
+    
+    // Clean up
+    if (error_msg) {
+        // Error message exists, but we don't need to use it
+    }
+    
+    magic_close(cookie);
     assert_file_closed(&in_file);;
-    assert_file_closed(&out_file);
+    
+    // Clean up output file if it exists
+    remove("output_file");
+    
+    assert_file_closed(&test_file);
+	assert_file_closed(&out_file);
 	assert_file_closed(&in_file);
-	return 0;
-  }
-
-  // Get the file descriptor for reading and writing
-  int in_fd = fuzz_fileno(in_file);
-  int out_fd = fuzz_fileno(out_file);
-
-  // Initialize the libvpx encoder
-  vpx_codec_ctx_t encoder;
-  vpx_codec_enc_cfg_t encoder_cfg;
-  vpx_codec_iface_t *encoder_iface = vpx_codec_vp8_cx();
-
-  // Set encoder configuration
-  vpx_codec_enc_config_default(encoder_iface, &encoder_cfg, fuzz_uint32_t_1);
-  encoder_cfg.g_w = 640;
-  encoder_cfg.g_h = 480;
-
-  // Initialize the encoder
-  vpx_codec_enc_init_ver(&encoder, encoder_iface, &encoder_cfg, fuzz_int64_t_2, VPX_ENCODER_ABI_VERSION);
-
-  // Create an input image
-  vpx_image_t image;
-  vpx_img_alloc(&image, VPX_IMG_FMT_I420, 640, 480, 16);
-
-  // Encode the image
-  vpx_codec_encode(&encoder, &image, fuzz_int64_t_3, fuzz_uint64_t_4, fuzz_int64_t_5, fuzz_uint64_t_6);
-
-  // Get the stream info
-  vpx_codec_stream_info_t stream_info;
-  vpx_codec_get_stream_info(&encoder, &stream_info);
-
-  // Write the stream stats to file
-  vpx_write_tpl_gop_stats(out_file, NULL);
-
-  // Initialize the libvpx decoder
-  vpx_codec_ctx_t decoder;
-  vpx_codec_dec_cfg_t decoder_cfg;
-  vpx_codec_iface_t *decoder_iface = vpx_codec_vp8_dx();
-
-  // Set decoder configuration
-  decoder_cfg.w = stream_info.w;
-  decoder_cfg.h = stream_info.h;
-
-  // Initialize the decoder
-  vpx_codec_dec_init_ver(&decoder, decoder_iface, &decoder_cfg, fuzz_int64_t_7, VPX_DECODER_ABI_VERSION);
-
-  // Set frame buffer functions
-  vpx_codec_set_frame_buffer_functions(&decoder, NULL, NULL, NULL);
-
-  // Decode the stream
-  vpx_codec_decode(&decoder, data, size, NULL, fuzz_int64_t_8);
-
-  // Get the decoded image
-  const vpx_image_t *decoded_image = vpx_codec_get_frame(&decoder, NULL);
-
-  // Cleanup
-  vpx_img_free(&image);
-  vpx_codec_destroy(&encoder);
-  vpx_codec_destroy(&decoder);
-  assert_file_closed(&in_file);;
-  assert_file_closed(&out_file);;
-
-  assert_file_closed(&out_file);
-	assert_file_closed(&in_file);
-	assert_fd_closed(out_fd);
-	assert_fd_closed(in_fd);
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("input_file");
+	assert_fd_closed(fd);
 	return 0;
 }

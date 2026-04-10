@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,96 +7,116 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1131
-//<Prompt> ["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_err_to_string","vpx_codec_vp8_dx","vpx_codec_set_frame_buffer_functions","vpx_codec_error","vpx_codec_dec_init_ver","vpx_codec_register_put_frame_cb","vpx_codec_encode","vpx_codec_get_preview_frame","vpx_codec_get_frame","vpx_codec_destroy","vpx_img_free"]
-/*<Combination>: [vpx_codec_iface_t *vpx_codec_vp8_cx(),
-    vpx_codec_err_t vpx_codec_enc_config_default(vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, unsigned int usage),
-    vpx_codec_err_t vpx_codec_enc_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_enc_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    const char *vpx_codec_err_to_string(vpx_codec_err_t err),
-    vpx_codec_iface_t *vpx_codec_vp8_dx(),
-    vpx_codec_err_t vpx_codec_set_frame_buffer_functions(vpx_codec_ctx_t * ctx, vpx_get_frame_buffer_cb_fn_t cb_get, vpx_release_frame_buffer_cb_fn_t cb_release, void * cb_priv),
-    const char *vpx_codec_error(const vpx_codec_ctx_t * ctx),
-    vpx_codec_err_t vpx_codec_dec_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_dec_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_err_t vpx_codec_register_put_frame_cb(vpx_codec_ctx_t * ctx, vpx_codec_put_frame_cb_fn_t cb, void * user_priv),
-    vpx_codec_err_t vpx_codec_encode(vpx_codec_ctx_t * ctx, const vpx_image_t * img, vpx_codec_pts_t pts, unsigned long duration, vpx_enc_frame_flags_t flags, unsigned long deadline),
-    const vpx_image_t *vpx_codec_get_preview_frame(vpx_codec_ctx_t * ctx),
-    vpx_image_t *vpx_codec_get_frame(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    vpx_codec_err_t vpx_codec_destroy(vpx_codec_ctx_t * ctx),
-    void vpx_img_free(vpx_image_t * img)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 491
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 6, nr_unique_branch: 1
-//<Quality> {"density":9,"unique_branches":{"vp8e_get_preview":[[1139,7,1139,60,0,0,4,0]]},"library_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_set_frame_buffer_functions","vpx_img_alloc","vpx_codec_encode","vpx_codec_get_preview_frame","vpx_img_alloc","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_set_frame_buffer_functions","vpx_img_alloc","vpx_codec_encode","vpx_codec_get_preview_frame","vpx_img_alloc","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"visited":2}
+//<score> 72, nr_unique_branch: 49
+//<Quality> {"density":12,"unique_branches":{"do_ops":[[1505,3,1505,18,0,0,4,0]],"handle_annotation":[[2544,7,2544,57,0,0,4,0],[2548,7,2548,37,0,0,4,0]],"magic_buffer":[[561,6,561,52,0,0,4,0]],"cvt_32":[[1070,3,1070,17,3,0,4,0],[1085,3,1085,21,3,0,4,0],[1087,8,1087,36,3,0,4,0],[1087,8,1087,36,3,0,4,1]],"file_strncmp":[[2091,14,2091,22,0,0,4,1]],"magiccheck":[[2298,7,2298,15,0,0,4,1],[2320,17,2320,34,0,0,4,0],[2328,8,2328,14,0,0,4,0]],"file_push_buffer":[[801,6,801,37,0,0,4,0]],"cvt_64":[[1076,3,1076,18,4,0,4,0]],"cvt_8":[[1073,3,1073,18,3,0,4,0],[1085,3,1085,21,3,0,4,0],[1087,8,1087,36,3,0,4,0],[1087,8,1087,36,3,0,4,1],[1085,3,1085,21,4,0,4,0],[1087,8,1087,36,4,0,4,0],[1087,8,1087,36,4,0,4,1]],"buffer_fill":[[80,6,80,18,0,0,4,0]],"mget":[[1709,4,1709,20,0,0,4,0],[1764,8,1764,54,0,0,4,1],[1918,7,1918,22,0,0,4,1],[1921,7,1921,42,0,0,4,0],[1921,7,1921,42,0,0,4,1],[1931,34,1931,53,0,0,4,0],[1931,34,1931,53,0,0,4,1],[1934,8,1937,36,0,0,4,1],[1942,7,1942,37,0,0,4,1],[1946,7,1946,19,0,0,4,0],[1946,23,1946,54,0,0,4,1],[1949,7,1949,14,0,0,4,1],[2005,7,2005,31,0,0,4,0],[72,59,72,76,12,0,4,1],[109,22,109,25,13,0,4,0],[72,30,72,40,21,0,4,1],[72,59,72,76,21,0,4,0],[72,59,72,76,21,0,4,1],[109,22,109,25,22,0,4,0],[72,30,72,40,32,0,4,0],[72,30,72,40,32,0,4,1],[72,59,72,76,32,0,4,0],[109,22,109,25,50,0,4,0],[109,22,109,25,56,0,4,0],[72,59,72,76,58,0,4,1],[109,22,109,25,59,0,4,1],[72,59,72,76,69,0,4,0]]},"library_calls":["magic_open","magic_load_buffers","magic_close","magic_setflags","magic_close","magic_file","magic_file","magic_buffer","magic_list","magic_compile","magic_errno","magic_close"],"critical_calls":["magic_open","magic_load_buffers","magic_setflags","magic_file","magic_file","magic_buffer","magic_list","magic_compile","magic_errno","magic_close"],"visited":1}
 /**/
 
 
 extern "C" int LLVMFuzzerTestOneInput_23(const uint8_t* f_data, size_t f_size) {
-	if(f_size<60) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_4, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_5, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_6, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_7, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_8, fdp);
 	//fuzzer shim end}
 
 
 
 
-    vpx_codec_ctx_t encoder;
-    vpx_codec_enc_cfg_t encoder_config;
-    vpx_codec_iface_t *encoder_iface = vpx_codec_vp8_cx();
+    // Early return if input is too small for meaningful processing
+    if (size < 2) {
+        return 0;
+    }
 
-    // Initialize encoder configuration with default values
-    vpx_codec_enc_config_default(encoder_iface, &encoder_config, fuzz_uint32_t_1);
+    // Create magic cookie with flags
+    magic_t cookie = magic_open(MAGIC_NONE | MAGIC_ERROR);
+    if (cookie == nullptr) {
+        return 0;
+    }
 
-    // Set up encoder with the configuration
-    vpx_codec_enc_init_ver(&encoder, encoder_iface, &encoder_config, fuzz_int64_t_2, VPX_ENCODER_ABI_VERSION);
+    // Split input data into two parts for different purposes
+    // First part: buffer data for magic database compilation
+    // Second part: file data for magic analysis
+    size_t split_point = size / 2;
+    
+    // Prepare buffers for magic database loading
+    void* buffer_array[1];
+    size_t sizes_array[1];
+    
+    buffer_array[0] = (void*)data;
+    sizes_array[0] = split_point;
 
-    vpx_codec_ctx_t decoder;
-    vpx_codec_dec_cfg_t decoder_config;
-    vpx_codec_iface_t *decoder_iface = vpx_codec_vp8_dx();
+    // Load magic database from buffer
+    if (magic_load_buffers(cookie, buffer_array, sizes_array, 1) != 0) {
+        magic_close(cookie);
+        return 0;
+    }
 
-    // Initialize decoder configuration with default values
-    vpx_codec_dec_init_ver(&decoder, decoder_iface, &decoder_config, fuzz_int64_t_3, VPX_DECODER_ABI_VERSION);
+    // Set additional flags for magic analysis
+    magic_setflags(cookie, MAGIC_MIME);
 
-    // Set frame buffer functions for encoder and decoder
-    vpx_codec_set_frame_buffer_functions(&encoder, nullptr, nullptr, nullptr);
-    vpx_codec_set_frame_buffer_functions(&decoder, nullptr, nullptr, nullptr);
+    // Create a temporary file for magic_file testing
+    FILE* in_file = fmemopen((void*)(data + split_point), size - split_point, "rb");
+    if (in_file == nullptr) {
+        magic_close(cookie);
+        assert_file_closed(&in_file);
+	return 0;
+    }
 
-    // Create a vpx_image_t object to hold the input image
-    vpx_image_t input_image;
-    vpx_img_alloc(&input_image, VPX_IMG_FMT_I420, encoder_config.g_w, encoder_config.g_h, 32);
+    // Get file descriptor for magic_descriptor if needed (though not in our API list)
+    // We'll just keep it for potential use
+    int fd = fuzz_fileno(in_file);
 
-    // Encode the input image
-    vpx_codec_encode(&encoder, &input_image, fuzz_int64_t_4, fuzz_uint64_t_5, fuzz_int64_t_6, fuzz_uint64_t_7);
+    // Use magic_file to analyze the temporary file
+    const char* file_result = magic_file(cookie, "dummy_path");
+    // Note: magic_file needs actual file path, so we'll create one
+    FILE* temp_file = fopen("temp_input_file", "wb");
+    if (temp_file != nullptr) {
+        fwrite(data + split_point, 1, size - split_point, temp_file);
+        assert_file_closed(&temp_file);;
+        
+        file_result = magic_file(cookie, "temp_input_file");
+        remove("temp_input_file");
+    }
 
-    // Get the preview frame from the encoder
-    const vpx_image_t *preview_frame = vpx_codec_get_preview_frame(&encoder);
+    // Use magic_buffer to analyze the data buffer directly
+    const char* buffer_result = magic_buffer(cookie, data + split_point, size - split_point);
 
-    // Create a vpx_image_t object to hold the output image
-    vpx_image_t output_image;
-    vpx_img_alloc(&output_image, VPX_IMG_FMT_I420, decoder_config.w, decoder_config.h, 32);
+    // List magic entries to an output file
+    FILE* out_file = fopen("output_file", "wb");
+    if (out_file != nullptr) {
+        // We can't directly capture magic_list output since it writes to file
+        // So we'll specify our output file
+        magic_list(cookie, "magic_list_output.txt");
+        assert_file_closed(&out_file);;
+    }
 
-    // Decode the output image
-    vpx_codec_decode(&decoder, data, size, nullptr, fuzz_int64_t_8);
+    // Compile magic database to a file
+    magic_compile(cookie, "compiled.mgc");
 
-    // Get the decoded frame from the decoder
-    const vpx_image_t *decoded_frame = vpx_codec_get_frame(&decoder, nullptr);
+    // Check for errors using magic_errno
+    int error_code = magic_errno(cookie);
 
-    // Free the allocated image buffers
-    vpx_img_free(&input_image);
-    vpx_img_free(&output_image);
+    // Clean up resources
+    assert_file_closed(&in_file);;
+    remove("magic_list_output.txt");
+    remove("compiled.mgc");
+    remove("output_file");
+    
+    magic_close(cookie);
 
-    // Destroy the encoder and decoder contexts
-    vpx_codec_destroy(&encoder);
-    vpx_codec_destroy(&decoder);
-
-    return 0;
+    assert_file_closed(&out_file);
+	assert_file_closed(&temp_file);
+	assert_file_closed(&in_file);
+	assert_file_name_closed("output_file");
+	assert_fd_closed(fd);
+	return 0;
 }

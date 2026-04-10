@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,110 +7,179 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1481
-//<Prompt> ["vpx_codec_vp9_dx","vpx_codec_dec_init_ver","vpx_codec_get_frame","vpx_codec_get_preview_frame","vpx_codec_enc_init_ver","vpx_codec_enc_init_multi_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_destroy"]
-/*<Combination>: [vpx_codec_iface_t *vpx_codec_vp9_dx(),
-    vpx_codec_err_t vpx_codec_dec_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_dec_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_image_t *vpx_codec_get_frame(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    const vpx_image_t *vpx_codec_get_preview_frame(vpx_codec_ctx_t * ctx),
-    vpx_codec_err_t vpx_codec_enc_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_enc_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_err_t vpx_codec_enc_init_multi_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, int num_enc, vpx_codec_flags_t flags, vpx_rational_t * dsf, int ver),
-    vpx_codec_err_t vpx_codec_set_frame_buffer_functions(vpx_codec_ctx_t * ctx, vpx_get_frame_buffer_cb_fn_t cb_get, vpx_release_frame_buffer_cb_fn_t cb_release, void * cb_priv),
-    vpx_codec_err_t vpx_codec_destroy(vpx_codec_ctx_t * ctx)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 811
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 6.5, nr_unique_branch: 0
-//<Quality> {"density":13,"unique_branches":{},"library_calls":["vpx_codec_vp9_dx","vpx_codec_dec_init_ver","vpx_codec_vp9_cx","vpx_codec_enc_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_set_frame_buffer_functions","vpx_codec_decode","vpx_codec_get_frame","vpx_codec_get_preview_frame","vpx_codec_encode","vpx_codec_get_cx_data","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp9_dx","vpx_codec_dec_init_ver","vpx_codec_vp9_cx","vpx_codec_enc_init_ver","vpx_codec_set_frame_buffer_functions","vpx_codec_set_frame_buffer_functions","vpx_codec_decode","vpx_codec_get_frame","vpx_codec_get_preview_frame","vpx_codec_encode","vpx_codec_get_cx_data","vpx_codec_destroy","vpx_codec_destroy"],"visited":1}
-/*Here is an implementation of the LLVMFuzzerTestOneInput_33 function using the libvpx library APIs:
+//<score> 102, nr_unique_branch: 9
+//<Quality> {"density":17,"unique_branches":{"doshn":[[1442,6,1442,28,0,0,4,0]],"elf_printf":[[76,6,76,28,0,0,4,0]],"dophn_exec":[[1838,8,1838,30,0,0,4,0],[1848,8,1848,30,0,0,4,0],[1866,8,1866,30,0,0,4,0],[1871,6,1871,28,0,0,4,0]],"handle_mime":[[96,7,96,35,0,0,4,1],[100,6,100,34,0,0,4,1]],"dophn_core":[[376,6,376,28,0,0,4,0]]},"library_calls":["magic_getpath","magic_open","magic_getflags","magic_setflags","magic_setparam","magic_load","magic_error","magic_load_buffers","magic_check","magic_getparam","magic_list","magic_buffer","magic_file","magic_descriptor","magic_error","magic_errno","magic_close"],"critical_calls":["magic_getpath","magic_open","magic_getflags","magic_setflags","magic_setparam","magic_load","magic_error","magic_load_buffers","magic_check","magic_getparam","magic_list","magic_buffer","magic_file","magic_descriptor","magic_error","magic_errno","magic_close"],"visited":0}
+/*We are going to create a fuzzing driver that tests the libmagic library by simulating a realistic usage scenario. The event we'll implement is: "Using libmagic to identify the MIME type of input data, while also loading and checking a custom magic database buffer".
+
+The step-by-step approach:
+1. First, we'll get the default magic database path.
+2. Create a magic cookie with `magic_open`.
+3. Set and get flags to configure the cookie.
+4. Load the default magic database and also load the input data as a custom magic buffer.
+5. Use `magic_check` to verify the loaded databases.
+6. Use `magic_list` to output the magic entries to a file.
+7. Identify the MIME type of the input data using both `magic_buffer` and `magic_file`.
+8. Handle errors and cleanup.
+
+Here's the complete fuzz driver:
 
 */
 
 
-// Include the libvpx headers here
 
 extern "C" int LLVMFuzzerTestOneInput_33(const uint8_t* f_data, size_t f_size) {
-	if(f_size<56) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_4, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_5, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_6, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_7, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-  // Create a FILE pointer to read the input data
-  FILE *in_file = fmemopen((void *)data, size, "rb");
 
-  // Create a FILE pointer to write the output data
-  FILE *out_file = fopen("output_file", "wb");
+    // Early return if no data
+    if (size == 0) {
+        return 0;
+    }
 
-  // Initialize the libvpx decoder
-  vpx_codec_iface_t *decoder_iface = vpx_codec_vp9_dx();
-  vpx_codec_ctx_t decoder_ctx;
-  vpx_codec_dec_cfg_t decoder_cfg = {0}; // Set the decoder configuration parameters if needed
+    // 1. Get the default magic database path
+    const char *default_db = magic_getpath(nullptr, 0);
+    if (!default_db) {
+        // If we can't get path, still continue with other operations
+    }
 
-  vpx_codec_err_t decoder_init_err = vpx_codec_dec_init_ver(&decoder_ctx, decoder_iface, &decoder_cfg, fuzz_int64_t_1, VPX_DECODER_ABI_VERSION);
-  if (decoder_init_err != VPX_CODEC_OK) {
-    // Error handling
-  }
+    // 2. Open magic cookie with MIME type flag
+    magic_t cookie = magic_open(MAGIC_MIME_TYPE);
+    if (!cookie) {
+        return 0;  // Can't proceed without cookie
+    }
 
-  // Initialize the libvpx encoder
-  vpx_codec_iface_t *encoder_iface = vpx_codec_vp9_cx();
-  vpx_codec_ctx_t encoder_ctx;
-  vpx_codec_enc_cfg_t encoder_cfg = {0}; // Set the encoder configuration parameters if needed
+    // 3. Get current flags
+    int flags = magic_getflags(cookie);
 
-  vpx_codec_err_t encoder_init_err = vpx_codec_enc_init_ver(&encoder_ctx, encoder_iface, &encoder_cfg, fuzz_int64_t_2, VPX_ENCODER_ABI_VERSION);
-  if (encoder_init_err != VPX_CODEC_OK) {
-    // Error handling
-  }
+    // 4. Set additional flags (preserve existing ones)
+    // We'll add MAGIC_CONTINUE to get multiple matches
+    int new_flags = flags | MAGIC_CONTINUE;
+    magic_setflags(cookie, new_flags);
 
-  // Set the frame buffer functions for the encoder and decoder
-  vpx_codec_set_frame_buffer_functions(&encoder_ctx, nullptr, nullptr, nullptr);
-  vpx_codec_set_frame_buffer_functions(&decoder_ctx, nullptr, nullptr, nullptr);
+    // 5. Set a parameter - using MAGIC_PARAM_INDIR_MAX
+    size_t indirect_max = 50;
+    magic_setparam(cookie, MAGIC_PARAM_INDIR_MAX, &indirect_max);
 
-  // Decode the input data
-  vpx_codec_iter_t decoder_iter = nullptr;
-  const vpx_image_t *decoded_frame = nullptr;
-  vpx_codec_decode(&decoder_ctx, data, size, nullptr, fuzz_int64_t_3);
+    // 6. Load the default magic database
+    if (magic_load(cookie, default_db) != 0) {
+        // Even if default load fails, continue with buffer load
+        const char *error = magic_error(cookie);
+        (void)error; // Use error to avoid unused warning
+    }
 
-  // Iterate through the decoded frames
-  while ((decoded_frame = vpx_codec_get_frame(&decoder_ctx, &decoder_iter)) != nullptr) {
-    // Process each decoded frame if needed
-  }
+    // 7. Load the input data as a magic buffer
+    // We'll treat the input as a magic database buffer
+    void *buffer = const_cast<void*>(static_cast<const void*>(data));
+    void *buffers[] = {buffer};
+    size_t sizes[] = {size};
+    
+    // This might fail if input isn't valid magic data, but we try anyway
+    magic_load_buffers(cookie, buffers, sizes, 1);
 
-  // Get the preview frame from the decoder
-  const vpx_image_t *preview_frame = vpx_codec_get_preview_frame(&decoder_ctx);
-  if (preview_frame != nullptr) {
-    // Process the preview frame if needed
-  }
+    // 8. Check the loaded magic databases
+    // Check default database first
+    if (default_db) {
+        magic_check(cookie, default_db);
+        // Don't check the buffer as it's already loaded via load_buffers
+    }
 
-  // Encode the decoded frames or the preview frame
-  vpx_codec_encode(&encoder_ctx, decoded_frame, fuzz_int64_t_4, fuzz_uint64_t_5, fuzz_int64_t_6, fuzz_uint64_t_7);
+    // 9. Get the parameter we set to verify it
+    size_t retrieved_max = 0;
+    magic_getparam(cookie, MAGIC_PARAM_INDIR_MAX, &retrieved_max);
 
-  // Get the encoded frames from the encoder
-  vpx_codec_iter_t encoder_iter = nullptr;
-  const vpx_codec_cx_pkt_t *encoded_frame = nullptr;
-  while ((encoded_frame = vpx_codec_get_cx_data(&encoder_ctx, &encoder_iter)) != nullptr) {
-    // Process each encoded frame if needed
-  }
+    // 10. Write the magic list to an output file
+    FILE *out_file = fopen("output_file", "wb");
+    if (out_file) {
+        // We need to flush and close to ensure list is written
+        assert_file_closed(&out_file);;
+        magic_list(cookie, "output_file");
+    }
 
-  // Destroy the codec contexts
-  vpx_codec_destroy(&encoder_ctx);
-  vpx_codec_destroy(&decoder_ctx);
+    // 11. Create an input file with the data for magic_file
+    FILE *in_file = fmemopen((void *)data, size, "rb");
+    if (in_file) {
+        // Write the file to disk for magic_file
+        FILE *temp_in = fopen("input_file", "wb");
+        if (temp_in) {
+            rewind(in_file);
+            char buf[1024];
+            size_t n;
+            while ((n = fread(buf, 1, sizeof(buf), in_file)) > 0) {
+                fwrite(buf, 1, n, temp_in);
+            }
+            assert_file_closed(&temp_in);;
+        }
+        
+        // 12. Use magic_buffer on the original data
+        const char *buffer_result = magic_buffer(cookie, data, size);
+        if (buffer_result) {
+            // Use the result to avoid unused variable warning
+            volatile const char *vol_result = buffer_result;
+            (void)vol_result;
+        }
+        
+        // 13. Use magic_file on the saved file
+        const char *file_result = magic_file(cookie, "input_file");
+        if (file_result) {
+            volatile const char *vol_result = file_result;
+            (void)vol_result;
+        }
+        
+        // 14. Try magic_descriptor (though not in the list, but mentioned in header)
+        rewind(in_file);
+        int fd = fuzz_fileno(in_file);
+        if (fd != -1) {
+            const char *desc_result = magic_descriptor(cookie, fd);
+            if (desc_result) {
+                volatile const char *vol_result = desc_result;
+                (void)vol_result;
+            }
+        }
+        
+        assert_file_closed(&in_file);;
+    }
 
-  // Close the input and output files
-  assert_file_closed(&in_file);;
-  assert_file_closed(&out_file);;
+    // 15. Check for any errors
+    const char *error_msg = magic_error(cookie);
+    if (error_msg) {
+        volatile const char *vol_error = error_msg;
+        (void)vol_error;
+    }
+    
+    // 16. Get errno from magic
+    int magic_err = magic_errno(cookie);
+    (void)magic_err; // Use to avoid unused warning
 
-  assert_file_closed(&out_file);
-	assert_file_closed(&in_file);
+    // 17. Cleanup
+    magic_close(cookie);
+    
+    // Remove temporary files
+    remove("input_file");
+    remove("output_file");
+
+    assert_file_closed(&in_file);
+	assert_file_closed(&out_file);
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("input_file");
 	return 0;
 }

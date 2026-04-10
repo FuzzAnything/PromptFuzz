@@ -77,7 +77,7 @@ impl<'a> VarDecl {
         self.name
             .clone()
             .unwrap_or("dummy_var".into())
-            .into_string()
+            .into_string().trim().to_string()
     }
 
     pub fn get_type(&self) -> Type {

@@ -22,6 +22,7 @@ pub trait CommomHelper {
     fn get_call_arg_stmts(&self) -> Vec<&Node>;
     fn get_source_range(&self) -> eyre::Result<(usize, usize)>;
     fn dump(&self) -> String;
+    fn is_macro_expansion(&self) -> bool;
 }
 
 impl CommomHelper for Node {
@@ -200,5 +201,34 @@ impl CommomHelper for Node {
             _ => Ok(format!("{:?}", self.kind)),
         };
         dump_str.unwrap_or_else(|_| format!("{:?}", self.kind))
+    }
+
+    fn is_macro_expansion(&self) -> bool {
+        match &self.kind {
+            Clang::ImplicitCastExpr(ce) => crate::ast::loc::is_macro_expansion(&ce.range),
+            Clang::CStyleCastExpr(ce) => crate::ast::loc::is_macro_expansion(&ce.range),
+            Clang::StringLiteral(sl) => crate::ast::loc::is_macro_expansion(&sl.range),
+            Clang::IntegerLiteral(il) => crate::ast::loc::is_macro_expansion(&il.range),
+            Clang::CharacterLiteral(cl) => crate::ast::loc::is_macro_expansion(&cl.range),
+            Clang::FloatingLiteral(fl) => crate::ast::loc::is_macro_expansion(&fl.range),
+            Clang::IfStmt(is) => crate::ast::loc::is_macro_expansion(&is.range),
+            Clang::DeclStmt(ds) => crate::ast::loc::is_macro_expansion(&ds.range),
+            Clang::BinaryOperator(bo) => crate::ast::loc::is_macro_expansion(&bo.range),
+            Clang::UnaryOperator(uo) => crate::ast::loc::is_macro_expansion(&uo.range),
+            Clang::ReturnStmt(rs) => crate::ast::loc::is_macro_expansion(&rs.range),
+            Clang::CallExpr(ce) => crate::ast::loc::is_macro_expansion(&ce.range),
+            Clang::UnaryExprOrTypeTraitExpr(ue) => crate::ast::loc::is_macro_expansion(&ue.range),
+            Clang::CXXStaticCastExpr(cce) => crate::ast::loc::is_macro_expansion(&cce.range),
+            Clang::ParenExpr(pe) => crate::ast::loc::is_macro_expansion(&pe.range),
+            Clang::DeclRefExpr(dre) => crate::ast::loc::is_macro_expansion(&dre.range),
+            Clang::CompoundStmt(cs) => crate::ast::loc::is_macro_expansion(&cs.range),
+            Clang::ConstantExpr(ce) => crate::ast::loc::is_macro_expansion(&ce.range),
+            Clang::EnumConstantDecl(ecd) => crate::ast::loc::is_macro_expansion(&ecd.range),
+            Clang::InitListExpr(ile) => crate::ast::loc::is_macro_expansion(&ile.range),
+            _ => {
+                // For other unhandled nodes, check if any of their children are macro expansions
+                self.inner.iter().any(|child| child.is_macro_expansion())
+            }
+        }
     }
 }

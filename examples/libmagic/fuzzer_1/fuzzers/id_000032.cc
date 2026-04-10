@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,78 +7,144 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1402
-//<Prompt> ["vpx_codec_vp9_dx","vpx_img_wrap","vpx_codec_dec_init_ver","vpx_write_tpl_gop_stats","vpx_codec_decode","vpx_codec_get_frame","vpx_codec_get_stream_info","vpx_codec_destroy"]
-/*<Combination>: [vpx_codec_iface_t *vpx_codec_vp9_dx(),
-    vpx_image_t *vpx_img_wrap(vpx_image_t * img, vpx_img_fmt_t fmt, unsigned int d_w, unsigned int d_h, unsigned int stride_align, unsigned char * img_data),
-    vpx_codec_err_t vpx_codec_dec_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_dec_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_err_t vpx_write_tpl_gop_stats(FILE * tpl_file, const VpxTplGopStats * tpl_gop_stats),
-    vpx_codec_err_t vpx_codec_decode(vpx_codec_ctx_t * ctx, const uint8_t * data, unsigned int data_sz, void * user_priv, long deadline),
-    vpx_image_t *vpx_codec_get_frame(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    vpx_codec_err_t vpx_codec_get_stream_info(vpx_codec_ctx_t * ctx, vpx_codec_stream_info_t * si),
-    vpx_codec_err_t vpx_codec_destroy(vpx_codec_ctx_t * ctx)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 669
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 2.6666667, nr_unique_branch: 0
-//<Quality> {"density":8,"unique_branches":{},"library_calls":["vpx_codec_vp9_dx","vpx_img_wrap","vpx_codec_dec_init_ver","vpx_codec_decode","vpx_codec_get_frame","vpx_codec_get_stream_info","vpx_write_tpl_gop_stats","vpx_codec_destroy","vpx_img_free"],"critical_calls":["vpx_codec_vp9_dx","vpx_img_wrap","vpx_codec_dec_init_ver","vpx_codec_decode","vpx_codec_get_frame","vpx_codec_get_stream_info","vpx_write_tpl_gop_stats","vpx_codec_destroy","vpx_img_free"],"visited":2}
-/*Here is the C++ program that completes the requirements step by step:
+//<score> 15, nr_unique_branch: 1
+//<Quality> {"density":15,"unique_branches":{"do_os_note":[[673,6,673,32,0,0,4,1]]},"library_calls":["magic_open","magic_getflags","magic_setparam","magic_close","magic_load","magic_error","magic_check","magic_error","magic_file","magic_error","magic_list","magic_error","magic_file","magic_error","magic_close"],"critical_calls":["magic_open","magic_getflags","magic_setparam","magic_load","magic_error","magic_check","magic_error","magic_file","magic_error","magic_list","magic_error","magic_file","magic_error","magic_close"],"visited":1}
+/**/
 
-*/
 
+// Constants for magic parameters
+#define MAGIC_PARAM_INDIR_MAX 0
+#define MAGIC_PARAM_NAME_MAX 1
+#define MAGIC_PARAM_ELF_PHNUM_MAX 2
+#define MAGIC_PARAM_ELF_SHNUM_MAX 3
+#define MAGIC_PARAM_ELF_NOTES_MAX 4
+#define MAGIC_PARAM_REGEX_MAX 5
 
 extern "C" int LLVMFuzzerTestOneInput_32(const uint8_t* f_data, size_t f_size) {
-	if(f_size<28) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_2, fdp);
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_3, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_4, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_5, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-    vpx_codec_iface_t *codec_iface = vpx_codec_vp9_dx();
+
+    // Early exit if no data
+    if (size == 0) {
+	return 0;
+	}
+	
     
-    // Wrap the input data as a vpx_image_t
-    vpx_image_t img;
-    vpx_img_wrap(&img, VPX_IMG_FMT_I420, fuzz_uint32_t_1, fuzz_uint32_t_2, fuzz_uint32_t_3, const_cast<uint8_t *>(data));
+    // 1. Create magic cookie with MAGIC_NONE flags
+    magic_t cookie = magic_open(0);
+    if (cookie == nullptr) {
+	return 0;
+	}
+	
     
-    // Create the decoder context and configure it
-    vpx_codec_ctx_t decoder;
-    vpx_codec_dec_cfg_t dec_cfg;
-    dec_cfg.threads = 1;
-    dec_cfg.w = 1280;
-    dec_cfg.h = 720;
+    // 2. Get current flags (just for demonstration)
+    int current_flags = magic_getflags(cookie);
     
-    vpx_codec_dec_init_ver(&decoder, codec_iface, &dec_cfg, fuzz_int64_t_4, VPX_DECODER_ABI_VERSION);
+    // 3. Set a magic parameter
+    size_t param_value = 100;
+    if (size > sizeof(size_t)) {
+        memcpy(&param_value, data, sizeof(size_t));
+    }
+    magic_setparam(cookie, MAGIC_PARAM_INDIR_MAX, &param_value);
     
-    // Decode the input data
-    vpx_codec_decode(&decoder, data, static_cast<unsigned int>(size), nullptr, fuzz_int64_t_5);
+    // 4. Create a temporary file with input data
+    FILE *in_file = fmemopen((void *)data, size, "rb");
+    if (in_file == nullptr) {
+        magic_close(cookie);
+        assert_file_closed(&in_file);
+	return 0;
+    }
     
-    // Get the decoded frame
-    vpx_codec_iter_t iter = nullptr;
-    const vpx_image_t *decoded_frame = vpx_codec_get_frame(&decoder, &iter);
+    // 5. Write input data to "input_file" for magic_file API
+    FILE *input_file = fopen("input_file", "wb");
+    if (input_file != nullptr) {
+        fwrite(data, 1, size, input_file);
+        assert_file_closed(&input_file);;
+    }
     
-    // Get the stream info
-    vpx_codec_stream_info_t stream_info;
-    vpx_codec_get_stream_info(&decoder, &stream_info);
+    // 6. Load default magic database
+    if (magic_load(cookie, nullptr) != 0) {
+        const char *error1 = magic_error(cookie);
+        if (error1 != nullptr) {
+            // Error handling (just consume it for fuzzing)
+        }
+    }
     
-    // Write the GOP stats to a file
-    FILE *tpl_file = fopen("gop_stats.txt", "w");
-    vpx_write_tpl_gop_stats(tpl_file, nullptr); // Provide appropriate arguments based on your use case
-    assert_file_closed(&tpl_file);;
+    // 7. Check the magic database
+    if (magic_check(cookie, nullptr) != 0) {
+        const char *error2 = magic_error(cookie);
+        if (error2 != nullptr) {
+            // Error handling
+        }
+    }
     
-    // Destroy the decoder context
-    vpx_codec_destroy(&decoder);
+    // 8. First call to magic_file
+    const char *result1 = magic_file(cookie, "input_file");
+    if (result1 == nullptr) {
+        const char *error3 = magic_error(cookie);
+        if (error3 != nullptr) {
+            // Error handling
+        }
+    }
     
-    // Release allocated resources
-    vpx_img_free(&img);
+    // 9. List magic entries to "output_file"
+    FILE *out_file = fopen("output_file", "wb");
+    if (out_file != nullptr) {
+        // We need to close the file as magic_list will open it again
+        assert_file_closed(&out_file);;
+        
+        if (magic_list(cookie, "output_file") != 0) {
+            const char *error4 = magic_error(cookie);
+            if (error4 != nullptr) {
+                // Error handling
+            }
+        }
+    }
     
-    assert_file_closed(&tpl_file);
+    // 10. Second call to magic_file (on the same input file)
+    const char *result2 = magic_file(cookie, "input_file");
+    if (result2 == nullptr) {
+        const char *error5 = magic_error(cookie);
+        if (error5 != nullptr) {
+            // Error handling
+        }
+    }
+    
+    // 11. Cleanup
+    if (in_file != nullptr) assert_file_closed(&in_file);;
+    
+    // Remove temporary files
+    remove("input_file");
+    remove("output_file");
+    
+    magic_close(cookie);
+    
+    assert_file_closed(&out_file);
+	assert_file_closed(&input_file);
+	assert_file_closed(&in_file);
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("input_file");
+	assert_file_name_closed("input_file");
+	assert_file_name_closed("input_file");
 	return 0;
 }

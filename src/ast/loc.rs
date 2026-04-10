@@ -284,3 +284,7 @@ pub fn is_macro_stmt(range: &SourceRange) -> bool {
     }
     false
 }
+
+pub fn is_macro_expansion(range: &SourceRange) -> bool {
+    range.begin.expansion_loc.is_some() || range.end.expansion_loc.is_some()
+}
