@@ -105,7 +105,7 @@ def compile_afl_fuzzer(project_name):
     else:
         print("AFL fuzzer compiled successfully.")
         print("Run the fuzzer with the following command: `afl-fuzz -i corpus -o output -V 86400 -t 10000 -- ./afl_fuzzer`")
-        print("If you are testing network libraries, please using brwap to isolate the netwrok: `bwrap --bind / / --dev /dev --proc /proc --unshare-net -- afl-fuzz -i corpus -o output -V 86400 -t 10000 -- ./afl_fuzzer`")
+        print("If you are testing network libraries, please using brwap to isolate the netwrok: `bwrap --bind / / --dev /dev --proc /proc --unshare-net --tmpfs /tmp -- afl-fuzz -i corpus -o output -V 86400 -t 10000 -- ./afl_fuzzer`")
 
 def compile_cov_fuzzer(project_name):
         # Placeholder for the actual compilation logic

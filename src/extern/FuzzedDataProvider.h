@@ -690,9 +690,9 @@ extern "C" {
       std::cerr << "Error opening file: " << fuzz_filename << std::endl; \
       abort(); \
   } \
-  std::vector<uint8_t> fuzz_data((std::istreambuf_iterator<char>(fuzz_file)), std::istreambuf_iterator<char>()); \
-  const uint8_t* data = fuzz_data.data(); \
-  size_t data_sz = fuzz_data.size(); 
+  std::vector<uint8_t> promptfuzz_fuzz_data((std::istreambuf_iterator<char>(fuzz_file)), std::istreambuf_iterator<char>()); \
+  const uint8_t* data = promptfuzz_fuzz_data.data(); \
+  size_t data_sz = promptfuzz_fuzz_data.size(); 
 
 #define FDPReadRawBytesWithNullTerm(ty, data, data_sz, fdp) \
   const char *fuzz_filename = "highest_cov_corpora"; \
@@ -701,10 +701,10 @@ extern "C" {
       std::cerr << "Error opening file: " << fuzz_filename << std::endl; \
       return 1; \
   } \
-  std::vector<uint8_t> fuzz_data((std::istreambuf_iterator<char>(fuzz_file)), std::istreambuf_iterator<char>()); \
-  fuzz_data.push_back('\x00'); \
-  const uint8_t* data = fuzz_data.data(); \
-  size_t data_sz = fuzz_data.size(); 
+  std::vector<uint8_t> promptfuzz_fuzz_data((std::istreambuf_iterator<char>(fuzz_file)), std::istreambuf_iterator<char>()); \
+  promptfuzz_fuzz_data.push_back('\x00'); \
+  const uint8_t* data = promptfuzz_fuzz_data.data(); \
+  size_t data_sz = promptfuzz_fuzz_data.size(); 
 
 #define FDPConsumeChar(var, fdp) \
   if (fdp.remaining_bytes() < sizeof(char)) { return 0;} \
