@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,81 +7,131 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 513
-//<Prompt> ["vpx_codec_enc_config_set","vpx_img_wrap","vpx_codec_register_put_slice_cb","vpx_codec_control_","vpx_codec_get_preview_frame","vpx_codec_error","vpx_free_tpl_gop_stats","vpx_codec_get_cx_data","vpx_img_free"]
-/*<Combination>: [vpx_codec_err_t vpx_codec_enc_config_set(vpx_codec_ctx_t * ctx, const vpx_codec_enc_cfg_t * cfg),
-    vpx_image_t *vpx_img_wrap(vpx_image_t * img, vpx_img_fmt_t fmt, unsigned int d_w, unsigned int d_h, unsigned int stride_align, unsigned char * img_data),
-    vpx_codec_err_t vpx_codec_register_put_slice_cb(vpx_codec_ctx_t * ctx, vpx_codec_put_slice_cb_fn_t cb, void * user_priv),
-    vpx_codec_err_t vpx_codec_control_(vpx_codec_ctx_t * ctx, int ctrl_id),
-    const vpx_image_t *vpx_codec_get_preview_frame(vpx_codec_ctx_t * ctx),
-    const char *vpx_codec_error(const vpx_codec_ctx_t * ctx),
-    void vpx_free_tpl_gop_stats(VpxTplGopStats * tpl_gop_stats),
-    const vpx_codec_cx_pkt_t *vpx_codec_get_cx_data(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    void vpx_img_free(vpx_image_t * img)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 175
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 10, nr_unique_branch: 1
-//<Quality> {"density":10,"unique_branches":{"vpx_codec_err_to_string":[[36,5,36,25,0,0,4,0]]},"library_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_config_set","vpx_img_wrap","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_register_put_slice_cb","vpx_codec_encode","vpx_codec_get_preview_frame","vpx_codec_error","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp8_cx","vpx_codec_enc_config_default","vpx_codec_enc_config_set","vpx_img_wrap","vpx_codec_vp8_dx","vpx_codec_dec_init_ver","vpx_codec_register_put_slice_cb","vpx_codec_encode","vpx_codec_get_preview_frame","vpx_codec_error","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"visited":1}
-/*Here is the C++ program that achieves the event using the mentioned libvpx APIs:
-
-*/
-
+//<score> 21, nr_unique_branch: 0
+//<Quality> {"density":21,"unique_branches":{},"library_calls":["magic_open","magic_getflags","magic_setflags","magic_error","magic_close","magic_close","magic_close","magic_load_buffers","magic_check","magic_error","magic_errno","magic_load","magic_error","magic_list","magic_error","magic_errno","magic_setparam","magic_error","magic_getparam","magic_error","magic_close"],"critical_calls":["magic_open","magic_getflags","magic_setflags","magic_load_buffers","magic_check","magic_error","magic_errno","magic_load","magic_error","magic_list","magic_error","magic_errno","magic_setparam","magic_error","magic_getparam","magic_error","magic_close"],"visited":0}
+/**/
 
 
 extern "C" int LLVMFuzzerTestOneInput_10(const uint8_t* f_data, size_t f_size) {
-	if(f_size<48) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_4, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_5, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_6, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_7, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-  // Create a vpx_codec_ctx for encoding
-  vpx_codec_ctx_t enc_ctx;
-  vpx_codec_enc_cfg_t enc_cfg;
-  vpx_codec_iface_t* enc_iface = vpx_codec_vp8_cx();
-  vpx_codec_enc_config_default(enc_iface, &enc_cfg, fuzz_uint32_t_1);
-  vpx_codec_enc_config_set(&enc_ctx, &enc_cfg);
 
-  // Create a vpx_image to hold the input data
-  vpx_image_t img;
-  vpx_img_wrap(&img, VPX_IMG_FMT_I420, enc_cfg.g_w, enc_cfg.g_h, fuzz_uint32_t_2,
-               const_cast<uint8_t*>(data));
+    // Create a magic handle with default flags
+    magic_t cookie = magic_open(MAGIC_NONE);
+    if (cookie == nullptr) {
+        return 0;
+    }
 
-  // Create a vpx_codec_ctx for decoding
-  vpx_codec_ctx_t dec_ctx;
-  vpx_codec_dec_cfg_t dec_cfg;
-  vpx_codec_iface_t* dec_iface = vpx_codec_vp8_dx();
-  vpx_codec_dec_init_ver(&dec_ctx, dec_iface, &dec_cfg, fuzz_int64_t_3, VPX_DECODER_ABI_VERSION);
+    // Get current flags for reference
+    int current_flags = magic_getflags(cookie);
+    
+    // Set flags - enable multiple file types and continue on error
+    if (magic_setflags(cookie, MAGIC_CONTINUE | MAGIC_MIME_TYPE) == -1) {
+        // Get error if flag setting failed
+        const char *error_msg = magic_error(cookie);
+        magic_close(cookie);
+        return 0;
+    }
 
-  // Register a vpx_codec_put_slice_cb callback
-  vpx_codec_register_put_slice_cb(&enc_ctx, nullptr, nullptr);
+    // Create in-memory buffer for magic data
+    FILE *in_file = fmemopen((void *)data, size, "rb");
+    if (in_file == nullptr) {
+        magic_close(cookie);
+        assert_file_closed(&in_file);
+	return 0;
+    }
 
-  // Perform encoding
-  vpx_codec_encode(&enc_ctx, &img, fuzz_int64_t_4, fuzz_uint64_t_5, fuzz_int64_t_6, fuzz_uint64_t_7);
+    // Get file descriptor for reading
+    int fd = fuzz_fileno(in_file);
+    
+    // Create output file for listing
+    FILE *out_file = fopen("output_file", "wb");
+    if (out_file == nullptr) {
+        assert_file_closed(&in_file);;
+        magic_close(cookie);
+        assert_file_closed(&out_file);
+	assert_file_closed(&in_file);
+	assert_fd_closed(fd);
+	return 0;
+    }
 
-  // Get the preview frame from the encoding context
-  const vpx_image_t* preview_frame = vpx_codec_get_preview_frame(&enc_ctx);
+    // Get file descriptor for writing (not used directly but demonstrating)
+    int out_fd = fuzz_fileno(out_file);
+    (void)out_fd; // Mark as used to avoid compiler warnings
 
-  // Get the error message from the encoding context
-  const char* error_msg = vpx_codec_error(&enc_ctx);
+    // Buffer preparation for magic_load_buffers
+    void *buffers[1] = {(void *)data};
+    size_t buffer_sizes[1] = {size};
+    size_t num_buffers = 1;
 
-  // Release memory allocated by the vpx_image
-  vpx_img_free(&img);
+    // Try to load magic data from buffers
+    int load_result = magic_load_buffers(cookie, buffers, buffer_sizes, num_buffers);
+    
+    // If buffer loading fails, try alternative approach with regular file loading
+    if (load_result == -1) {
+        // Check magic database using a dummy file
+        if (magic_check(cookie, "input_file") == -1) {
+            const char *error_msg = magic_error(cookie);
+            int err = magic_errno(cookie);
+        }
+        
+        // Try to load from compiled database
+        if (magic_load(cookie, nullptr) == -1) {
+            const char *error_msg = magic_error(cookie);
+        }
+    }
 
-  // Release the encoding and decoding contexts
-  vpx_codec_destroy(&enc_ctx);
-  vpx_codec_destroy(&dec_ctx);
+    // List magic entries to output file
+    if (magic_list(cookie, "output_file") == -1) {
+        const char *error_msg = magic_error(cookie);
+        int err = magic_errno(cookie);
+    }
 
-  return 0;
+    // Set a parameter - example with buffer size
+    size_t param_value = 1024;
+    if (magic_setparam(cookie, 0, &param_value) == -1) {
+        const char *error_msg = magic_error(cookie);
+    }
+
+    // Get another parameter (for demonstration)
+    size_t get_param_value = 0;
+    if (magic_getparam(cookie, 0, &get_param_value) == -1) {
+        const char *error_msg = magic_error(cookie);
+    }
+
+    // Clean up resources
+    assert_file_closed(&in_file);;
+    assert_file_closed(&out_file);;
+    magic_close(cookie);
+
+    // Remove the output file created
+    remove("output_file");
+
+    assert_file_closed(&out_file);
+	assert_file_closed(&in_file);
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("output_file");
+	assert_fd_closed(out_fd);
+	assert_fd_closed(fd);
+	return 0;
 }

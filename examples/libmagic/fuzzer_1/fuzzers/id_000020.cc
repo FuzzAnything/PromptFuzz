@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,83 +7,123 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1068
-//<Prompt> ["vpx_codec_error","vpx_codec_register_put_slice_cb","vpx_codec_err_to_string","vpx_img_set_rect","vpx_codec_error_detail"]
-/*<Combination>: [const char *vpx_codec_error(const vpx_codec_ctx_t * ctx),
-    vpx_codec_err_t vpx_codec_register_put_slice_cb(vpx_codec_ctx_t * ctx, vpx_codec_put_slice_cb_fn_t cb, void * user_priv),
-    const char *vpx_codec_err_to_string(vpx_codec_err_t err),
-    int vpx_img_set_rect(vpx_image_t * img, unsigned int x, unsigned int y, unsigned int w, unsigned int h),
-    const char *vpx_codec_error_detail(const vpx_codec_ctx_t * ctx)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 332
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 4.5, nr_unique_branch: 0
-//<Quality> {"density":9,"unique_branches":{},"library_calls":["vpx_codec_vp9_dx","vpx_codec_dec_init_ver","vpx_codec_error","vpx_img_alloc","vpx_img_free","vpx_codec_destroy","vpx_codec_decode","vpx_codec_error","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp9_dx","vpx_codec_dec_init_ver","vpx_img_alloc","vpx_codec_decode","vpx_codec_error","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy"],"visited":1}
-/*Here is the C++ program that achieves the given event using the libvpx library APIs:
+//<score> 13, nr_unique_branch: 0
+//<Quality> {"density":13,"unique_branches":{},"library_calls":["magic_getpath","magic_open","magic_getflags","magic_setflags","magic_close","magic_setparam","magic_close","magic_getparam","magic_close","magic_compile","magic_list","magic_error","magic_errno","magic_close"],"critical_calls":["magic_getpath","magic_open","magic_getflags","magic_setflags","magic_setparam","magic_getparam","magic_compile","magic_list","magic_error","magic_errno","magic_close"],"visited":0}
+/**/
 
-*/
 
+// Include the libmagic header
 
 extern "C" int LLVMFuzzerTestOneInput_20(const uint8_t* f_data, size_t f_size) {
-	if(f_size<16) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-    // Create a vpx_codec_ctx_t structure
-    vpx_codec_ctx_t codec_ctx;
-    // Initialize the codec_ctx with the desired codec interface
-    vpx_codec_iface_t *codec_iface = vpx_codec_vp9_dx();
-    vpx_codec_dec_cfg_t dec_cfg = {0};  // Update with your desired decoder configuration
-    vpx_codec_err_t err = vpx_codec_dec_init_ver(&codec_ctx, codec_iface, &dec_cfg, fuzz_int64_t_1, VPX_DECODER_ABI_VERSION);
-    if (err != VPX_CODEC_OK) {
-        printf("Failed to initialize decoder: %s\n", vpx_codec_error(&codec_ctx));
-        return 0;
+
+    if (size == 0) {
+        return 0;  // No meaningful data to process
     }
-    
-    // Create a vpx_image_t structure for storing decoded frames
-    vpx_image_t *decoded_frame = vpx_img_alloc(NULL, VPX_IMG_FMT_I420, dec_cfg.w, dec_cfg.h, 32);
-    
-    // Create a file descriptor for reading the input data
+
+    // Create a temporary file to write the input data
     FILE *in_file = fmemopen((void *)data, size, "rb");
     if (!in_file) {
-        printf("Failed to open input file\n");
-        vpx_img_free(decoded_frame);
-        vpx_codec_destroy(&codec_ctx);
         assert_file_closed(&in_file);
 	return 0;
     }
-    
-    // Read data from the input file
-    uint8_t buffer[4096];
-    size_t bytes_read;
-    while ((bytes_read = fread(buffer, 1, sizeof(buffer), in_file)) > 0) {
-        // Decode the data
-        err = vpx_codec_decode(&codec_ctx, buffer, bytes_read, NULL, fuzz_int64_t_2);
-        if (err != VPX_CODEC_OK) {
-            printf("Failed to decode frame: %s\n", vpx_codec_error(&codec_ctx));
-            break;
-        }
-        
-        // Get the decoded frame
-        const vpx_image_t *decoded_image = vpx_codec_get_frame(&codec_ctx, NULL);
-        if (decoded_image) {
-            // Process the decoded frame
-            // ...
-        }
+
+    // 1. Get the default magic database path
+    const char *magic_path = magic_getpath(NULL, 0);
+    if (!magic_path) {
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	return 0;
     }
-    
-    // Release allocated resources
+
+    // 2. Open a magic database
+    magic_t magic_cookie = magic_open(MAGIC_NONE);
+    if (!magic_cookie) {
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	return 0;
+    }
+
+    // 3. Set flags on the magic database
+    int current_flags = magic_getflags(magic_cookie);
+    if (magic_setflags(magic_cookie, current_flags | MAGIC_CONTINUE) == -1) {
+        magic_close(magic_cookie);
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	return 0;
+    }
+
+    // 4. Set a parameter - using buffer size parameter as example
+    size_t buffer_size_param = 4096;
+    if (magic_setparam(magic_cookie, MAGIC_PARAM_BYTES_MAX, &buffer_size_param) == -1) {
+        magic_close(magic_cookie);
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	return 0;
+    }
+
+    // 5. Get a parameter back to verify
+    size_t retrieved_param = 0;
+    if (magic_getparam(magic_cookie, MAGIC_PARAM_BYTES_MAX, &retrieved_param) == -1) {
+        magic_close(magic_cookie);
+        assert_file_closed(&in_file);;
+        assert_file_closed(&in_file);
+	return 0;
+    }
+
+    // 6. Compile the magic database from input data
+    // First, write data to a file for magic_compile to read
+    FILE *temp_file = fopen("input_file", "wb");
+    if (temp_file) {
+        fwrite(data, 1, size, temp_file);
+        assert_file_closed(&temp_file);;
+        
+        // Try to compile the input as a magic database
+        int compile_result = magic_compile(magic_cookie, "input_file");
+        // Note: This will likely fail for random input, but we call it as required
+        
+        // Clean up temporary file
+        remove("input_file");
+    }
+
+    // 7. List magic entries to a file
+    FILE *out_file = fopen("output_file", "wb");
+    if (out_file) {
+        int list_result = magic_list(magic_cookie, "output_file");
+        assert_file_closed(&out_file);;
+    }
+
+    // 8. Check for errors
+    const char *error_msg = magic_error(magic_cookie);
+    int errno_val = magic_errno(magic_cookie);
+
+    // 9. Clean up resources
+    magic_close(magic_cookie);
     assert_file_closed(&in_file);;
-    vpx_img_free(decoded_frame);
-    vpx_codec_destroy(&codec_ctx);
-    
-    assert_file_closed(&in_file);
+
+    assert_file_closed(&out_file);
+	assert_file_closed(&temp_file);
+	assert_file_closed(&in_file);
 	return 0;
 }
