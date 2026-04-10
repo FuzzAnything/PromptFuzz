@@ -353,6 +353,9 @@ impl<'a> Transformer<'a> {
                 if let Clang::CXXDefaultArgExpr = &arg.kind {
                     return Ok(());
                 }
+                if arg.is_macro_expansion() {
+                    return Ok(());
+                }
                 let (begin, end) = arg.get_source_range()?;
                 let len = end - begin;
                 self.seek_and_rewrite(begin, len, change_to)?;
@@ -1301,6 +1304,12 @@ fn collect_fuzzable_array_args(
     let mut fuzz_args = Vec::new();
     for arg_pos in const_array_pos {
         let arg = get_nth_arg(call, *arg_pos).unwrap();
+        if let Clang::CXXDefaultArgExpr = &arg.kind {
+            continue;
+        }
+        if arg.is_macro_expansion() {
+            continue;
+        }
         if is_read_from_file(arg, visitor) || !is_arg_fuzzable(arg, visitor) {
             continue;
         }
@@ -1335,6 +1344,12 @@ fn collect_fuzzable_integer_args(
     let mut fuzz_args = Vec::new();
     for arg_pos in integeral_pos {
         let arg = get_nth_arg(call, *arg_pos).unwrap();
+        if let Clang::CXXDefaultArgExpr = &arg.kind {
+            continue;
+        }
+        if arg.is_macro_expansion() {
+            continue;
+        }
         if is_ret_by_call(call_name, *arg_pos, visitor) || !is_arg_fuzzable(arg, visitor) {
             continue;
         }

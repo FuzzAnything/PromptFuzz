@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,90 +7,121 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 592
-//<Prompt> ["vpx_codec_vp8_cx","vpx_codec_vp8_dx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_vp8_cx","vpx_codec_enc_config_set","vpx_codec_register_put_frame_cb","vpx_codec_encode","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy"]
-/*<Combination>: [vpx_codec_iface_t *vpx_codec_vp8_cx(),
-    vpx_codec_iface_t *vpx_codec_vp8_dx(),
-    vpx_codec_err_t vpx_codec_enc_config_default(vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, unsigned int usage),
-    vpx_codec_err_t vpx_codec_enc_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_enc_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_iface_t *vpx_codec_vp8_cx(),
-    vpx_codec_err_t vpx_codec_enc_config_set(vpx_codec_ctx_t * ctx, const vpx_codec_enc_cfg_t * cfg),
-    vpx_codec_err_t vpx_codec_register_put_frame_cb(vpx_codec_ctx_t * ctx, vpx_codec_put_frame_cb_fn_t cb, void * user_priv),
-    vpx_codec_err_t vpx_codec_encode(vpx_codec_ctx_t * ctx, const vpx_image_t * img, vpx_codec_pts_t pts, unsigned long duration, vpx_enc_frame_flags_t flags, unsigned long deadline),
-    vpx_codec_err_t vpx_codec_decode(vpx_codec_ctx_t * ctx, const uint8_t * data, unsigned int data_sz, void * user_priv, long deadline),
-    vpx_image_t *vpx_codec_get_frame(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    void vpx_img_free(vpx_image_t * img),
-    vpx_codec_err_t vpx_codec_destroy(vpx_codec_ctx_t * ctx)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 235
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 6.6666665, nr_unique_branch: 5
-//<Quality> {"density":10,"unique_branches":{"vp8e_set_config":[[462,7,462,31,0,0,4,1],[462,35,462,59,0,0,4,1],[475,7,475,56,0,0,4,1],[479,7,479,26,0,0,4,1],[495,7,495,45,0,0,4,1]]},"library_calls":["vpx_codec_enc_config_default","vpx_codec_vp8_cx","vpx_codec_enc_init_ver","vpx_codec_vp8_cx","vpx_codec_enc_config_set","vpx_codec_dec_init_ver","vpx_codec_vp8_dx","vpx_codec_register_put_frame_cb","vpx_img_alloc","vpx_codec_encode","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_enc_config_default","vpx_codec_vp8_cx","vpx_codec_enc_init_ver","vpx_codec_vp8_cx","vpx_codec_enc_config_set","vpx_codec_dec_init_ver","vpx_codec_vp8_dx","vpx_codec_register_put_frame_cb","vpx_img_alloc","vpx_codec_encode","vpx_codec_decode","vpx_codec_get_frame","vpx_img_free","vpx_codec_destroy","vpx_codec_destroy"],"visited":2}
+//<score> 108.5, nr_unique_branch: 384
+//<Quality> {"density":14,"unique_branches":{"file_strncmp":[[2057,9,2057,43,0,0,4,1]],"file_getbuffer":[[589,8,589,29,0,0,4,0],[607,7,607,19,0,0,4,1],[612,40,612,43,0,0,4,0],[612,40,612,43,0,0,4,1]],"cvt_64":[[1065,6,1065,17,4,0,4,0],[1066,11,1066,37,4,0,4,1],[1067,3,1067,18,4,0,4,1],[1070,3,1070,17,4,0,4,1],[1073,3,1073,18,4,0,4,1],[1076,3,1076,18,4,0,4,1],[1079,3,1079,20,4,0,4,1],[1082,3,1082,23,4,0,4,0],[1085,3,1085,21,4,0,4,1],[1091,3,1091,21,4,0,4,1],[1098,6,1098,33,4,0,4,0]],"file_checkfmt":[[116,7,116,47,0,0,4,0]],"file_softmagic":[[141,3,141,10,0,0,4,0]],"gettag":[[153,6,153,13,0,0,4,0],[153,6,153,13,0,0,4,1],[158,6,158,17,0,0,4,0],[158,6,158,17,0,0,4,1],[161,6,161,13,0,0,4,1],[164,9,164,22,0,0,4,0],[164,9,164,22,0,0,4,1],[166,7,166,14,0,0,4,1]],"file_vprintf":[[147,6,147,44,0,0,4,0]],"trim_separator":[[277,6,277,32,0,0,4,0]],"file_checkfield":[[85,6,85,15,0,0,4,1],[87,6,87,9,0,0,4,0]],"moffset":[[843,4,843,18,0,0,4,0],[847,4,847,19,0,0,4,0],[848,4,848,21,0,0,4,0],[849,4,849,21,0,0,4,0],[850,2,850,21,0,0,4,0],[851,2,851,23,0,0,4,0],[852,2,852,23,0,0,4,0],[853,2,853,21,0,0,4,0],[854,2,854,23,0,0,4,0],[855,2,855,23,0,0,4,0],[859,4,859,18,0,0,4,0],[860,4,860,20,0,0,4,0],[862,4,862,20,0,0,4,0],[866,4,866,18,0,0,4,0],[868,4,868,20,0,0,4,0],[873,4,873,21,0,0,4,0],[874,4,874,24,0,0,4,0],[876,2,876,17,0,0,4,0],[877,25,877,39,0,0,4,0],[882,8,882,27,0,0,4,0],[885,8,885,31,0,0,4,0],[887,9,887,26,0,0,4,1],[894,2,894,16,0,0,4,0],[895,2,895,18,0,0,4,0],[896,2,896,18,0,0,4,0],[897,2,897,18,0,0,4,0],[902,2,902,19,0,0,4,0],[903,2,903,19,0,0,4,0],[904,2,904,19,0,0,4,0],[908,2,908,17,0,0,4,0],[909,2,909,19,0,0,4,0],[910,2,910,19,0,0,4,0],[914,2,914,18,0,0,4,0],[915,2,915,20,0,0,4,0],[916,2,916,20,0,0,4,0],[920,4,920,19,0,0,4,0],[921,4,921,21,0,0,4,0],[922,4,922,21,0,0,4,0],[926,4,926,20,0,0,4,0],[927,4,927,22,0,0,4,0],[928,4,928,22,0,0,4,0],[932,2,932,17,0,0,4,0],[934,10,934,50,0,0,4,0],[939,2,939,18,0,0,4,0],[940,10,940,50,0,0,4,0],[947,2,947,18,0,0,4,0],[969,2,969,9,0,0,4,0],[974,6,974,30,0,0,4,0]],"cvt_double":[[1137,6,1137,17,1,0,4,1]],"get_next_format_from_precision":[[118,6,118,26,0,0,4,1],[127,6,127,15,0,0,4,1],[138,6,138,23,0,0,4,1],[143,6,143,24,0,0,4,0],[143,6,143,24,0,0,4,1],[144,7,144,17,0,0,4,1],[146,7,146,21,0,0,4,1],[150,6,150,15,0,0,4,1],[155,6,155,15,0,0,4,0],[156,7,156,34,0,0,4,1]],"der_cmp":[[314,6,314,20,0,0,4,0],[314,6,314,20,0,0,4,1],[323,6,323,21,0,0,4,0],[323,6,323,21,0,0,4,1],[329,6,329,36,0,0,4,1],[334,6,334,32,0,0,4,0],[334,6,334,32,0,0,4,1],[343,2,343,11,0,0,4,1],[346,2,346,10,0,0,4,1],[349,2,349,9,0,0,4,0],[350,7,350,15,0,0,4,0]],"match":[[242,10,242,14,0,0,4,0],[242,18,242,56,0,0,4,1],[243,10,243,15,0,0,4,1],[247,11,247,32,0,0,4,1],[254,7,254,58,0,0,4,0],[317,9,317,28,0,0,4,0],[324,3,324,10,0,0,4,0],[327,3,327,10,0,0,4,1],[335,10,335,31,0,0,4,1],[310,3,310,25,3,0,4,0],[316,3,316,18,3,0,4,0],[317,3,317,20,3,0,4,0]],"file_ascmagic_with_encoding":[[231,7,231,10,0,0,4,0],[233,4,233,10,0,0,4,0],[236,5,236,11,0,0,4,0],[237,10,237,37,0,0,4,1],[240,5,240,12,0,0,4,1],[242,5,242,12,0,0,4,1],[247,4,247,11,0,0,4,1],[249,4,249,11,0,0,4,1]],"msetoffset":[[1565,8,1565,41,0,0,4,0],[1573,7,1573,30,0,0,4,0]],"cvt_8":[[1102,6,1102,26,1,0,4,1],[1065,6,1065,17,4,0,4,1],[1098,6,1098,33,4,0,4,1]],"mcopy":[[1357,3,1357,16,0,0,4,0],[1359,8,1359,23,0,0,4,0],[1374,21,1374,36,0,0,4,0],[1417,3,1417,23,0,0,4,0],[1424,8,1424,31,0,0,4,0],[1428,8,1428,24,0,0,4,0],[1436,10,1436,33,0,0,4,0],[1457,6,1457,25,0,0,4,0]],"get_next_format":[[218,15,218,36,0,0,4,0]],"file_or_fd":[[534,6,535,33,0,0,4,0]],"file_replace":[[659,6,659,13,0,0,4,0],[662,10,662,58,0,0,4,1]],"file_signextend":[[1719,3,1719,23,0,0,4,0],[1730,3,1730,18,0,0,4,0]],"magiccheck":[[2143,2,2143,16,0,0,4,0],[2147,2,2147,17,0,0,4,0],[2150,2,2150,21,0,0,4,0],[2151,2,2151,23,0,0,4,0],[2152,2,2152,23,0,0,4,0],[2153,2,2153,21,0,0,4,0],[2154,2,2154,23,0,0,4,0],[2155,2,2155,23,0,0,4,0],[2162,2,2162,18,0,0,4,0],[2163,2,2163,16,0,0,4,0],[2164,2,2164,18,0,0,4,0],[2165,2,2165,18,0,0,4,0],[2166,2,2166,18,0,0,4,0],[2167,2,2167,17,0,0,4,0],[2168,2,2168,19,0,0,4,0],[2169,2,2169,19,0,0,4,0],[2170,2,2170,19,0,0,4,0],[2177,2,2177,17,0,0,4,0],[2178,2,2178,19,0,0,4,0],[2179,2,2179,19,0,0,4,0],[2180,2,2180,18,0,0,4,0],[2181,2,2181,20,0,0,4,0],[2182,2,2182,20,0,0,4,0],[2183,2,2183,18,0,0,4,0],[2184,2,2184,20,0,0,4,0],[2185,2,2185,20,0,0,4,0],[2186,2,2186,18,0,0,4,0],[2190,2,2190,17,0,0,4,0],[2191,2,2191,19,0,0,4,0],[2192,2,2192,19,0,0,4,0],[2196,3,2196,11,0,0,4,1],[2200,3,2200,11,0,0,4,0],[2200,3,2200,11,0,0,4,1],[2204,3,2204,11,0,0,4,0],[2204,3,2204,11,0,0,4,1],[2208,3,2208,11,0,0,4,1],[2212,3,2212,11,0,0,4,1],[2216,3,2216,10,0,0,4,1],[2223,2,2223,18,0,0,4,0],[2224,2,2224,20,0,0,4,0],[2225,2,2225,20,0,0,4,0],[2229,3,2229,11,0,0,4,1],[2233,3,2233,11,0,0,4,1],[2237,3,2237,11,0,0,4,0],[2241,3,2241,11,0,0,4,1],[2245,3,2245,11,0,0,4,1],[2249,3,2249,10,0,0,4,1],[2264,2,2264,17,0,0,4,0],[2270,2,2270,22,0,0,4,0],[2301,8,2301,25,0,0,4,0],[2309,8,2309,14,0,0,4,1],[2375,3,2375,9,0,0,4,0],[2383,3,2383,19,0,0,4,1],[2397,2,2397,15,0,0,4,0],[2399,7,2399,20,0,0,4,0],[2399,7,2399,20,0,0,4,1],[2400,8,2400,38,0,0,4,1],[2426,2,2426,10,0,0,4,0],[2428,7,2428,37,0,0,4,1],[2444,2,2444,10,0,0,4,0],[2445,7,2445,25,0,0,4,1],[2455,8,2455,38,0,0,4,1],[2482,2,2482,10,0,0,4,0],[2484,7,2484,37,0,0,4,1]],"mprint":[[630,4,630,18,0,0,4,0],[633,4,633,19,0,0,4,0],[634,4,634,21,0,0,4,0],[635,4,635,21,0,0,4,0],[638,4,638,18,0,0,4,0],[639,4,639,20,0,0,4,0],[640,4,640,20,0,0,4,1],[641,4,641,20,0,0,4,0],[644,4,644,18,0,0,4,0],[646,4,646,20,0,0,4,0],[647,2,647,18,0,0,4,0],[650,4,650,20,0,0,4,0],[654,7,654,21,0,0,4,0],[654,7,654,21,0,0,4,1],[654,25,654,39,0,0,4,1],[655,8,657,34,0,0,4,1],[665,8,665,27,0,0,4,1],[668,8,668,34,0,0,4,1],[671,8,673,40,0,0,4,1],[676,8,676,31,0,0,4,1],[684,2,684,16,0,0,4,0],[685,2,685,18,0,0,4,0],[686,2,686,18,0,0,4,0],[687,2,687,18,0,0,4,0],[688,7,689,59,0,0,4,1],[694,2,694,19,0,0,4,0],[695,2,695,19,0,0,4,0],[696,2,696,19,0,0,4,0],[697,7,699,9,0,0,4,1],[703,2,703,17,0,0,4,0],[704,2,704,19,0,0,4,0],[705,2,705,19,0,0,4,0],[706,7,707,59,0,0,4,0],[706,7,707,59,0,0,4,1],[711,2,711,18,0,0,4,0],[712,2,712,20,0,0,4,0],[713,2,713,20,0,0,4,0],[714,7,715,70,0,0,4,1],[719,2,719,18,0,0,4,0],[720,2,720,20,0,0,4,0],[721,2,721,20,0,0,4,0],[722,7,724,12,0,0,4,1],[728,2,728,17,0,0,4,0],[729,2,729,19,0,0,4,0],[730,2,730,19,0,0,4,0],[733,3,733,10,0,0,4,1],[735,3,735,9,0,0,4,1],[740,3,740,10,0,0,4,0],[741,8,741,52,0,0,4,1],[747,2,747,18,0,0,4,0],[748,2,748,20,0,0,4,0],[749,2,749,20,0,0,4,0],[752,3,752,10,0,0,4,1],[754,3,754,9,0,0,4,1],[759,3,759,10,0,0,4,0],[760,8,760,52,0,0,4,1],[766,2,766,18,0,0,4,0],[773,7,773,17,0,0,4,1],[777,9,777,37,0,0,4,1],[783,7,783,17,0,0,4,1],[809,2,809,21,0,0,4,0],[810,2,810,23,0,0,4,0],[811,2,811,23,0,0,4,0],[812,7,813,52,0,0,4,1],[816,2,816,21,0,0,4,0],[817,2,817,23,0,0,4,0],[818,2,818,23,0,0,4,0],[819,7,820,52,0,0,4,1],[602,2,602,9,2,0,4,1],[604,2,604,8,2,0,4,1],[615,2,615,9,2,0,4,0],[616,7,616,25,2,0,4,1],[621,14,622,28,2,0,4,1],[602,2,602,9,6,0,4,1],[604,2,604,8,6,0,4,1],[615,2,615,9,6,0,4,0],[616,7,616,25,6,0,4,1],[621,14,622,28,6,0,4,1],[602,2,602,9,16,0,4,1],[604,2,604,8,16,0,4,1],[615,2,615,9,16,0,4,0],[616,7,616,25,16,0,4,1],[621,14,622,28,16,0,4,1]],"mconvert":[[1180,2,1180,16,0,0,4,0],[1181,7,1181,24,0,0,4,1],[1184,2,1184,17,0,0,4,0],[1185,2,1185,21,0,0,4,0],[1186,2,1186,21,0,0,4,0],[1187,7,1187,25,0,0,4,1],[1191,2,1191,16,0,0,4,0],[1192,2,1192,17,0,0,4,0],[1197,2,1197,17,0,0,4,0],[1198,2,1198,18,0,0,4,0],[1199,2,1199,18,0,0,4,0],[1200,2,1200,18,0,0,4,0],[1205,2,1205,22,0,0,4,0],[1207,2,1207,17,0,0,4,0],[1223,7,1223,16,0,0,4,0],[1240,2,1240,23,0,0,4,0],[1241,2,1241,23,0,0,4,0],[1247,2,1247,18,0,0,4,0],[1248,2,1248,19,0,0,4,0],[1254,2,1254,19,0,0,4,0],[1255,2,1255,20,0,0,4,0],[1256,2,1256,20,0,0,4,0],[1262,2,1262,23,0,0,4,0],[1263,2,1263,23,0,0,4,0],[1269,2,1269,18,0,0,4,0],[1270,2,1270,19,0,0,4,0],[1276,2,1276,19,0,0,4,0],[1277,2,1277,20,0,0,4,0],[1278,2,1278,20,0,0,4,0],[1283,2,1283,18,0,0,4,0],[1284,2,1284,18,0,0,4,0],[1285,2,1285,19,0,0,4,0],[1287,7,1287,25,0,0,4,1],[1290,2,1290,17,0,0,4,0],[1291,7,1291,28,0,0,4,1],[1294,2,1294,19,0,0,4,0],[1296,7,1296,28,0,0,4,1],[1299,2,1299,19,0,0,4,0],[1301,7,1301,28,0,0,4,1],[1304,2,1304,18,0,0,4,0],[1305,7,1305,29,0,0,4,1],[1308,2,1308,20,0,0,4,0],[1310,7,1310,29,0,0,4,1],[1313,2,1313,20,0,0,4,0],[1315,7,1315,29,0,0,4,1],[1324,2,1324,15,0,0,4,0],[1327,2,1327,9,0,0,4,0]],"getlength":[[188,6,188,13,0,0,4,1],[200,6,200,22,0,0,4,0],[200,6,200,22,0,0,4,1],[205,6,205,23,0,0,4,0],[205,6,205,23,0,0,4,1],[213,14,213,24,0,0,4,0],[213,14,213,24,0,0,4,1],[216,6,216,27,0,0,4,0],[216,6,216,27,0,0,4,1],[216,31,216,43,0,0,4,1]],"der_tag":[[227,6,227,24,0,0,4,0],[227,6,227,24,0,0,4,1]],"cvt_float":[[1137,6,1137,17,1,0,4,0],[1137,6,1137,17,1,0,4,1],[1138,11,1138,37,1,0,4,0],[1139,3,1139,18,1,0,4,1],[1142,3,1142,20,1,0,4,1],[1145,3,1145,23,1,0,4,1],[1148,3,1148,21,1,0,4,1]],"cvt_32":[[1067,3,1067,18,4,0,4,1],[1082,3,1082,23,4,0,4,0],[1098,6,1098,33,4,0,4,0]],"mget":[[1856,2,1856,16,0,0,4,0],[1861,2,1861,17,0,0,4,0],[1871,2,1871,18,0,0,4,0],[1872,2,1872,16,0,0,4,0],[1873,2,1873,18,0,0,4,0],[1874,2,1874,18,0,0,4,0],[1875,2,1875,18,0,0,4,0],[1876,2,1876,17,0,0,4,0],[1877,2,1877,19,0,0,4,0],[1878,2,1878,19,0,0,4,0],[1879,2,1879,19,0,0,4,0],[1880,2,1880,17,0,0,4,0],[1881,2,1881,19,0,0,4,0],[1882,2,1882,19,0,0,4,0],[1887,2,1887,18,0,0,4,0],[1888,2,1888,20,0,0,4,0],[1889,2,1889,20,0,0,4,0],[1902,2,1902,17,0,0,4,0],[1908,7,1908,22,0,0,4,0],[2010,2,2010,15,0,0,4,0],[2016,6,2016,28,0,0,4,0],[72,30,72,40,97,0,4,0],[72,30,72,40,97,0,4,1],[72,59,72,76,97,0,4,1],[72,59,72,76,117,0,4,0],[72,30,72,40,121,0,4,0],[72,30,72,40,121,0,4,1],[72,59,72,76,121,0,4,0],[72,59,72,76,121,0,4,1]]},"library_calls":["magic_open","magic_getflags","magic_setflags","magic_setparam","magic_getpath","magic_close","magic_close","magic_close","magic_check","magic_error","magic_file","magic_error","magic_list","magic_error","magic_close"],"critical_calls":["magic_open","magic_getflags","magic_setflags","magic_setparam","magic_getpath","magic_check","magic_error","magic_file","magic_error","magic_list","magic_error","magic_close"],"visited":3}
 /**/
 
 
-// Include the libvpx headers
+extern "C" {
+}
 
-// Implement the LLVMFuzzerTestOneInput_12 function
 extern "C" int LLVMFuzzerTestOneInput_12(const uint8_t* f_data, size_t f_size) {
-	if(f_size<60) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_4, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_5, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_6, fdp);
-		FDPConsumeIntegral(uint64_t, fuzz_uint64_t_7, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_8, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-    // Create a vpx_codec_enc_cfg_t structure for encoder configuration
-    vpx_codec_enc_cfg_t enc_cfg;
-    vpx_codec_enc_config_default(vpx_codec_vp8_cx(), &enc_cfg, fuzz_uint32_t_1);
 
-    // Create an encoder context
-    vpx_codec_ctx_t enc_ctx;
-    vpx_codec_enc_init_ver(&enc_ctx, vpx_codec_vp8_cx(), &enc_cfg, fuzz_int64_t_2, VPX_ENCODER_ABI_VERSION);
+    // 1. Create a magic cookie with default flags
+    magic_t magic_cookie = magic_open(0);
+    if (magic_cookie == nullptr) {
+        return 0;
+    }
 
-    // Set encoder configuration
-    vpx_codec_enc_config_set(&enc_ctx, &enc_cfg);
+    // 2. Set flags - using MAGIC_CHECK to enable syntax checking
+    int flags = magic_getflags(magic_cookie);
+    magic_setflags(magic_cookie, flags | MAGIC_CHECK);
+    
+    // 3. Set a parameter - using MAGIC_PARAM_BYTES_MAX
+    size_t max_bytes = 4096;
+    magic_setparam(magic_cookie, MAGIC_PARAM_BYTES_MAX, &max_bytes);
 
-    // Create a decoder context
-    vpx_codec_ctx_t dec_ctx;
-    vpx_codec_dec_cfg_t dec_cfg;
-    dec_cfg.w = enc_cfg.g_w;
-    dec_cfg.h = enc_cfg.g_h;
-    vpx_codec_dec_init_ver(&dec_ctx, vpx_codec_vp8_dx(), &dec_cfg, fuzz_int64_t_3, VPX_DECODER_ABI_VERSION);
+    // 4. Get the default magic file path
+    const char *magic_path = magic_getpath(nullptr, 0);
+    if (magic_path == nullptr) {
+        magic_close(magic_cookie);
+        return 0;
+    }
 
-    // Register a put frame callback function for the encoder
-    vpx_codec_register_put_frame_cb(&enc_ctx, NULL, NULL);
+    // 5. Write input data to a file for processing
+    FILE *in_file = fmemopen((void *)data, size, "rb");
+    if (in_file == nullptr) {
+        magic_close(magic_cookie);
+        assert_file_closed(&in_file);
+	return 0;
+    }
 
-    // Create an input image
-    vpx_image_t img;
-    vpx_img_alloc(&img, VPX_IMG_FMT_I420, enc_cfg.g_w, enc_cfg.g_h, 32);
+    // 6. Create an output file for magic_list
+    FILE *out_file = fopen("output_file", "wb");
+    if (out_file == nullptr) {
+        assert_file_closed(&in_file);;
+        magic_close(magic_cookie);
+        assert_file_closed(&out_file);
+	assert_file_closed(&in_file);
+	return 0;
+    }
 
-    // Encode the input image
-    vpx_codec_encode(&enc_ctx, &img, fuzz_int64_t_4, fuzz_uint64_t_5, fuzz_int64_t_6, fuzz_uint64_t_7);
+    // 7. Use magic_check on the input data (via file)
+    int fd = fuzz_fileno(in_file);
+    if (fd >= 0) {
+        // Save current position
+        long original_pos = ftell(in_file);
+        
+        // Check if the file contains valid magic data
+        int check_result = magic_check(magic_cookie, "input_file");
+        if (check_result != 0) {
+            const char *error_msg = magic_error(magic_cookie);
+            // Error is expected for random data, continue processing
+        }
+        
+        // Reset file position for other operations
+        fseek(in_file, original_pos, SEEK_SET);
+    }
 
-    // Decode the encoded data
-    vpx_codec_decode(&dec_ctx, data, size, NULL, fuzz_int64_t_8);
+    // 8. Use magic_file on the input
+    const char *description = magic_file(magic_cookie, "input_file");
+    if (description == nullptr) {
+        const char *error_msg = magic_error(magic_cookie);
+    }
 
-    // Get the decoded frame
-    vpx_codec_iter_t iter = NULL;
-    const vpx_image_t *dec_img = vpx_codec_get_frame(&dec_ctx, &iter);
+    // 9. Use magic_list to list magic entries to output file
+    int list_result = magic_list(magic_cookie, "output_file");
+    if (list_result != 0) {
+        const char *error_msg = magic_error(magic_cookie);
+    }
 
-    // Free the image memory
-    vpx_img_free(&img);
+    // 10. Clean up
+    assert_file_closed(&in_file);;
+    assert_file_closed(&out_file);;
+    magic_close(magic_cookie);
+    
+    // Remove temporary files if they exist
+    remove("input_file");
+    remove("output_file");
 
-    // Destroy the encoder and decoder contexts
-    vpx_codec_destroy(&enc_ctx);
-    vpx_codec_destroy(&dec_ctx);
-
-    return 0;
+    assert_file_closed(&out_file);
+	assert_file_closed(&in_file);
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("input_file");
+	assert_file_name_closed("output_file");
+	assert_file_name_closed("input_file");
+	assert_fd_closed(fd);
+	return 0;
 }

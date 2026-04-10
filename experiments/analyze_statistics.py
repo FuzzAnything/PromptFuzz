@@ -67,7 +67,7 @@ def process_coverage(project, statistics_dir):
     times = []
     coverages = []
     
-    merged_profdata = f"{project}_merged.profdata"
+    merged_profdata = os.path.join(statistics_dir, f"{project}_merged.profdata")
     
     for i, seed in enumerate(seeds):
         relative_time = seed["time"] - start_time
@@ -84,8 +84,6 @@ def process_coverage(project, statistics_dir):
         coverages.append(covered_branches)
         print(f"Processed {i+1}/{len(seeds)}: {seed['id']} at {relative_time:.2f}s - {covered_branches} branches")
 
-    if os.path.exists(merged_profdata):
-        os.remove(merged_profdata)
         
     output_json = os.path.join(statistics_dir, "coverage_growth.json")
     with open(output_json, "w") as f:

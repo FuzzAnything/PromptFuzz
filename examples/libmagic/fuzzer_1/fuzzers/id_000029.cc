@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,54 +7,43 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1306
-//<Prompt> ["vpx_codec_error_detail","vpx_codec_dec_init_ver","vpx_codec_vp8_cx","vpx_codec_get_global_headers","vpx_codec_enc_config_default","vpx_codec_get_cx_data","vpx_codec_destroy","vpx_img_free"]
-/*<Combination>: [const char *vpx_codec_error_detail(const vpx_codec_ctx_t * ctx),
-    vpx_codec_err_t vpx_codec_dec_init_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, const vpx_codec_dec_cfg_t * cfg, vpx_codec_flags_t flags, int ver),
-    vpx_codec_iface_t *vpx_codec_vp8_cx(),
-    vpx_fixed_buf_t *vpx_codec_get_global_headers(vpx_codec_ctx_t * ctx),
-    vpx_codec_err_t vpx_codec_enc_config_default(vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, unsigned int usage),
-    const vpx_codec_cx_pkt_t *vpx_codec_get_cx_data(vpx_codec_ctx_t * ctx, vpx_codec_iter_t * iter),
-    vpx_codec_err_t vpx_codec_destroy(vpx_codec_ctx_t * ctx),
-    void vpx_img_free(vpx_image_t * img)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 648
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 1, nr_unique_branch: 0
-//<Quality> {"density":1,"unique_branches":{},"library_calls":["vpx_codec_error_detail"],"critical_calls":["vpx_codec_error_detail"],"visited":0}
+//<score> 48, nr_unique_branch: 11
+//<Quality> {"density":12,"unique_branches":{"file_zmagic":[[297,6,297,39,0,0,4,1],[300,14,300,24,0,0,4,0],[300,14,300,24,0,0,4,1],[302,7,302,20,0,0,4,0],[302,7,302,20,0,0,4,1],[304,7,304,26,0,0,4,0],[304,7,304,26,0,0,4,1],[311,7,311,10,0,0,4,0],[383,6,383,14,0,0,4,1]],"lzmacmp":[[146,6,146,20,0,0,4,0]],"zlibcmp":[[131,6,131,25,0,0,4,0]]},"library_calls":["magic_open","magic_setflags","magic_close","magic_getflags","magic_setparam","magic_close","magic_getparam","magic_close","magic_close","magic_compile","magic_buffer","magic_close"],"critical_calls":["magic_open","magic_setflags","magic_getflags","magic_setparam","magic_getparam","magic_compile","magic_buffer","magic_close"],"visited":0}
 /**/
 
+
+// Include libmagic headers (these would typically be provided by the system)
+// Since we don't have actual headers, we'll forward declare what we need
+struct magic_set;
+typedef struct magic_set *magic_t;
+
+// Constants we need - these are typical values from magic.h
+#define MAGIC_NONE 0x000000
+#define MAGIC_PARAM_INDIR_MAX 0
+#define MAGIC_PARAM_NAME_MAX 1
+#define MAGIC_PARAM_ELF_PHNUM_MAX 2
+#define MAGIC_PARAM_ELF_SHNUM_MAX 3
+#define MAGIC_PARAM_ELF_NOTES_MAX 4
+
+// Declare the libmagic API functions we'll use
 extern "C" {
+    magic_t magic_open(int flags);
+    void magic_close(magic_t cookie);
+    const char *magic_buffer(magic_t cookie, const void *buffer, size_t length);
+    int magic_setflags(magic_t cookie, int flags);
+    int magic_setparam(magic_t cookie, int param, const void *val);
+    int magic_getflags(magic_t cookie);
+    int magic_getparam(magic_t cookie, int param, void *val);
+    int magic_compile(magic_t cookie, const char *magic_file);
 }
 
-// Event: Initialize decoder, decode frame, and print error details if any
-static void  id_000029_decode_frame(const uint8_t *data, size_t size) {
-    vpx_codec_ctx_t decoder;
-    vpx_codec_dec_cfg_t cfg = {0};
-    cfg.w = 320;
-    cfg.h = 240;
-
-    vpx_codec_err_t res = vpx_codec_dec_init_ver(&decoder, vpx_codec_vp8_dx(), &cfg, 0, VPX_DECODER_ABI_VERSION);
-    if (res != VPX_CODEC_OK) {
-        std::cout << "Decoder initialization failed: " << vpx_codec_error_detail(&decoder) << std::endl;
-        return;
-    }
-
-    vpx_image_t *img = NULL;
-    vpx_codec_iter_t iter = NULL;
-
-    res = vpx_codec_decode(&decoder, data, size, NULL, -1);
-    if (res != VPX_CODEC_OK) {
-        std::cout << "Error decoding frame: " << vpx_codec_error_detail(&decoder) << std::endl;
-    }
-
-    while ((img = vpx_codec_get_frame(&decoder, &iter)) != NULL) {
-        // Process decoded frame
-    }
-
-    vpx_img_free(img);
-    vpx_codec_destroy(&decoder);
-}
-
-// Main fuzz driver function
 extern "C" int LLVMFuzzerTestOneInput_29(const uint8_t* f_data, size_t f_size) {
 	if(f_size<0) return 0;
 
@@ -66,62 +52,70 @@ extern "C" int LLVMFuzzerTestOneInput_29(const uint8_t* f_data, size_t f_size) {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
 	//fuzzer shim end}
-	FILE *input_file_ptr = fopen("input_file", "wb");
-	if (input_file_ptr == NULL) {return 0;}
-	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
-	fclose(input_file_ptr);
 
 
 
 
-
-    // Step 4: Create input file
-    FILE *in_file = fmemopen((void *)data, size, "rb");
-    if (!in_file) {
-        std::cout << "Failed to create input file" << std::endl;
-        assert_file_closed(&in_file);
-	return 0;
+    if (size == 0) {
+        return 0;
     }
 
-    // Step 6: Specify input file name
-    const char *in_filename = "input_file";
-
-    // Step 7: Create output file
-    FILE *out_file = fopen("output_file", "wb");
-    if (!out_file) {
-        std::cout << "Failed to create output file" << std::endl;
-        assert_file_closed(&in_file);;
-        assert_file_closed(&out_file);
-	assert_file_closed(&in_file);
-	assert_file_name_closed("input_file");
-	return 0;
+    // Create a magic cookie with default flags
+    magic_t cookie = magic_open(MAGIC_NONE);
+    if (!cookie) {
+        return 0;
     }
 
-    // Step 6: Specify output file name
-    const char *out_filename = "output_file";
+    // Set flags based on input data (using first byte modulo some value)
+    int flags = data[0] % 0xFF;
+    if (magic_setflags(cookie, flags) != 0) {
+        magic_close(cookie);
+        return 0;
+    }
 
-    // Step 5: Get file descriptors
-    int in_fd = fuzz_fileno(in_file);
-    int out_fd = fuzz_fileno(out_file);
+    // Get current flags to verify
+    int current_flags = magic_getflags(cookie);
+    (void)current_flags; // Mark as used
 
-    // Step 1: Print error details
-    const char *error_detail = vpx_codec_error_detail(NULL);
-    std::cout << "Error Detail: " << error_detail << std::endl;
+    // Set a parameter - using size as the value
+    size_t param_value = size;
+    if (magic_setparam(cookie, MAGIC_PARAM_INDIR_MAX, &param_value) != 0) {
+        magic_close(cookie);
+        return 0;
+    }
 
-    // Step 2: Decode frame
-     id_000029_decode_frame(data, size);
+    // Get the parameter back to verify
+    size_t retrieved_value = 0;
+    if (magic_getparam(cookie, MAGIC_PARAM_INDIR_MAX, &retrieved_value) != 0) {
+        magic_close(cookie);
+        return 0;
+    }
 
-    // Step 3: Consume input data and size
+    // Create a temporary file with the input data for compilation
+    FILE *temp_file = fopen("magic_input.tmp", "wb");
+    if (!temp_file) {
+        magic_close(cookie);
+        assert_file_closed(&temp_file);
+	return 0;
+    }
+    
+    fwrite(data, 1, size, temp_file);
+    assert_file_closed(&temp_file);;
 
-    // Step 5: Release resources
-    assert_file_closed(&in_file);;
-    assert_file_closed(&out_file);;
+    // Try to compile the input data as a magic file
+    // Note: This will likely fail for random input, but that's OK for fuzzing
+    magic_compile(cookie, "magic_input.tmp");
 
-    assert_file_closed(&out_file);
-	assert_file_closed(&in_file);
-	assert_file_name_closed("output_file");
-	assert_file_name_closed("input_file");
-	assert_fd_closed(out_fd);
-	assert_fd_closed(in_fd);
+    // Clean up the temporary file
+    remove("magic_input.tmp");
+
+    // Use the input data as a buffer for identification
+    const char *result = magic_buffer(cookie, data, size);
+    (void)result; // Mark as used
+
+    // Clean up
+    magic_close(cookie);
+
+    assert_file_closed(&temp_file);
 	return 0;
 }

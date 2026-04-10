@@ -1,8 +1,5 @@
 #include "FDSan.h"
 #include "FuzzedDataProvider.h"
-#include <vpx/vp8dx.h>
-#include <vpx/vp8cx.h>
-#include <vpx/vpx_decoder.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -10,114 +7,153 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-//<ID> 1010
-//<Prompt> ["vpx_codec_register_put_frame_cb","vpx_codec_enc_init_multi_ver","vpx_codec_get_stream_info","vpx_img_set_rect","vpx_read_tpl_gop_stats"]
-/*<Combination>: [vpx_codec_err_t vpx_codec_register_put_frame_cb(vpx_codec_ctx_t * ctx, vpx_codec_put_frame_cb_fn_t cb, void * user_priv),
-    vpx_codec_err_t vpx_codec_enc_init_multi_ver(vpx_codec_ctx_t * ctx, vpx_codec_iface_t * iface, vpx_codec_enc_cfg_t * cfg, int num_enc, vpx_codec_flags_t flags, vpx_rational_t * dsf, int ver),
-    vpx_codec_err_t vpx_codec_get_stream_info(vpx_codec_ctx_t * ctx, vpx_codec_stream_info_t * si),
-    int vpx_img_set_rect(vpx_image_t * img, unsigned int x, unsigned int y, unsigned int w, unsigned int h),
-    vpx_codec_err_t vpx_read_tpl_gop_stats(FILE * tpl_file, VpxTplGopStats * tpl_gop_stats)
+extern "C" {
+#include <magic.h>
+}
+//<ID> 290
+//<Prompt> []
+/*<Combination>: [
 */
-//<score> 4, nr_unique_branch: 5
-//<Quality> {"density":4,"unique_branches":{"vpx_codec_enc_init_multi_ver":[[101,13,101,25,0,0,4,0],[119,13,119,16,0,0,4,0],[120,38,120,47,0,0,4,0],[126,18,126,19,0,0,4,1],[23,32,23,37,8,0,4,0]]},"library_calls":["vpx_codec_vp8_cx","vpx_codec_vp8_dx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_dec_init_ver","vpx_codec_destroy","vpx_codec_destroy"],"critical_calls":["vpx_codec_vp8_cx","vpx_codec_vp8_dx","vpx_codec_enc_config_default","vpx_codec_enc_init_ver","vpx_codec_dec_init_ver","vpx_codec_destroy","vpx_codec_destroy"],"visited":1}
-/**/
+//<score> 82.5, nr_unique_branch: 45
+//<Quality> {"density":15,"unique_branches":{"file_buffer":[[501,6,501,44,0,0,4,0],[502,7,502,34,0,0,4,0],[503,8,503,43,0,0,4,1],[505,7,505,45,0,0,4,1]],"cvt_8":[[1070,3,1070,17,3,0,4,0],[1082,3,1082,23,3,0,4,0],[1070,3,1070,17,4,0,4,0]],"do_ops":[[1492,7,1492,37,0,0,4,1]],"getlength":[[216,31,216,43,0,0,4,0]],"msetoffset":[[1544,7,1544,21,0,0,4,0],[1545,8,1545,38,0,0,4,0]],"mget":[[1680,4,1680,19,0,0,4,0],[1749,3,1749,20,0,0,4,0],[1811,3,1811,18,0,0,4,0],[1814,7,1815,50,0,0,4,1],[72,30,72,40,12,0,4,0],[72,30,72,40,15,0,4,0],[72,59,72,76,24,0,4,0],[72,30,72,40,52,0,4,0],[72,30,72,40,52,0,4,1],[72,59,72,76,52,0,4,0],[72,59,72,76,55,0,4,0],[72,30,72,40,87,0,4,0],[72,30,72,40,87,0,4,1],[72,59,72,76,87,0,4,1],[109,22,109,25,88,0,4,1]],"handle_mime":[[96,7,96,35,0,0,4,0],[96,39,97,26,0,0,4,1],[100,6,100,34,0,0,4,0],[100,38,100,69,0,0,4,1]],"cvt_64":[[1091,3,1091,21,4,0,4,0],[1093,8,1093,36,4,0,4,1],[1061,28,1061,49,47,0,4,1]],"file_strncmp":[[2050,10,2050,19,0,0,4,1],[2051,8,2051,15,0,0,4,0],[2060,13,2060,46,0,0,4,0],[2062,9,2062,43,0,0,4,0],[2090,7,2090,15,0,0,4,0],[2090,19,2090,25,0,0,4,0],[2090,29,2090,55,0,0,4,0],[2090,29,2090,55,0,0,4,1],[2091,8,2091,10,0,0,4,0],[2091,8,2091,10,0,0,4,1],[2091,14,2091,22,0,0,4,0]],"match":[[392,4,392,11,0,0,4,0]]},"library_calls":["magic_open","magic_setparam","magic_getflags","magic_setflags","magic_load_buffers","magic_load","magic_load","magic_getparam","magic_buffer","magic_error","magic_file","magic_error","magic_list","magic_error","magic_close"],"critical_calls":["magic_open","magic_setparam","magic_getflags","magic_setflags","magic_load_buffers","magic_load","magic_getparam","magic_buffer","magic_error","magic_file","magic_error","magic_list","magic_error","magic_close"],"visited":1}
+/*Looking at the available APIs and the requirements, I'll create a fuzz driver that tests libmagic's ability to identify file types using both buffer and file operations. Here's a step-by-step implementation:
+
+*/
 
 
-// Function to register put frame callback
-vpx_codec_err_t  id_000017_registerPutFrameCallback(vpx_codec_ctx_t *ctx, vpx_codec_put_frame_cb_fn_t cb, void *user_priv) {
-    return vpx_codec_register_put_frame_cb(ctx, cb, user_priv);
-}
+// Include libmagic headers
 
-// Function to initialize multi encoder
-vpx_codec_err_t  id_000017_initMultiEncoder(vpx_codec_ctx_t *ctx, vpx_codec_iface_t *iface, vpx_codec_enc_cfg_t *cfg,
-                                int num_enc, vpx_codec_flags_t flags, vpx_rational_t *dsf, int ver) {
-    return vpx_codec_enc_init_multi_ver(ctx, iface, cfg, num_enc, flags, dsf, ver);
-}
-
-// Function to get stream info
-vpx_codec_err_t  id_000017_getStreamInfo(vpx_codec_ctx_t *ctx, vpx_codec_stream_info_t *si) {
-    return vpx_codec_get_stream_info(ctx, si);
-}
-
-// Function to set rectangle in the image
-int  id_000017_setImageRect(vpx_image_t *img, unsigned int x, unsigned int y, unsigned int w, unsigned int h) {
-    return vpx_img_set_rect(img, x, y, w, h);
-}
-
-// Function to read TPL GOP stats from file
-vpx_codec_err_t  id_000017_readTplGopStats(FILE *tpl_file, VpxTplGopStats *tpl_gop_stats) {
-    return vpx_read_tpl_gop_stats(tpl_file, tpl_gop_stats);
-}
-
-// Fuzz driver function
 extern "C" int LLVMFuzzerTestOneInput_17(const uint8_t* f_data, size_t f_size) {
-	if(f_size<20) return 0;
+	if(f_size<0) return 0;
 
 	
 	//fuzzer vars shim {
 		FuzzedDataProvider fdp(f_data, f_size);
 		FDPConsumeRawBytes(const uint8_t *, data, size, fdp)
-		FDPConsumeIntegral(uint32_t, fuzz_uint32_t_1, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_2, fdp);
-		FDPConsumeIntegral(int64_t, fuzz_int64_t_3, fdp);
 	//fuzzer shim end}
+	FILE *input_file_ptr = fopen("input_file", "wb");
+	if (input_file_ptr == NULL) {return 0;}
+	fwrite(data, sizeof(uint8_t), size, input_file_ptr);
+	fclose(input_file_ptr);
 
 
 
 
-    // Variables for input and output files
-    FILE *in_file = fmemopen((void *)data, size, "rb");
-    FILE *out_file = fopen("output_file", "wb");
 
-    // File descriptors
-    int in_fd = fuzz_fileno(in_file);
-    int out_fd = fuzz_fileno(out_file);
+    // Check if we have minimal data to work with
+    if (size == 0) {
+        return 0;
+    }
 
-    // Initialize the libvpx library
-    vpx_codec_ctx_t encoder_ctx, decoder_ctx;
-    vpx_codec_iface_t *encoder_iface = vpx_codec_vp8_cx();
-    vpx_codec_iface_t *decoder_iface = vpx_codec_vp8_dx();
-    vpx_codec_enc_cfg_t encoder_cfg;
+    // 1. Create a magic cookie
+    magic_t cookie = magic_open(MAGIC_NONE);
+    if (cookie == nullptr) {
+        return 0;
+    }
 
-    // Initialize encoder
-    vpx_codec_enc_config_default(encoder_iface, &encoder_cfg, fuzz_uint32_t_1);
-    vpx_codec_enc_init_ver(&encoder_ctx, encoder_iface, &encoder_cfg, fuzz_int64_t_2, VPX_ENCODER_ABI_VERSION);
+    // 2. Set a parameter on the magic cookie
+    // Using MAGIC_PARAM_BYTES_MAX as example parameter
+    size_t bytes_max = size * 2;
+    if (magic_setparam(cookie, MAGIC_PARAM_BYTES_MAX, &bytes_max) != 0) {
+        // Continue anyway if setparam fails
+    }
 
-    // Initialize decoder
-    vpx_codec_dec_cfg_t decoder_cfg;
-    vpx_codec_dec_init_ver(&decoder_ctx, decoder_iface, &decoder_cfg, fuzz_int64_t_3, VPX_DECODER_ABI_VERSION);
+    // 3. Get current flags
+    int flags = magic_getflags(cookie);
+    
+    // 4. Add some additional flags for better detection
+    int new_flags = flags | MAGIC_CONTINUE | MAGIC_MIME;
+    if (magic_setflags(cookie, new_flags) != 0) {
+        // Continue anyway if setflags fails
+    }
 
-    // Register put frame callback
-     id_000017_registerPutFrameCallback(&encoder_ctx, NULL, NULL);
+    // 5. Load magic database from buffers
+    // We'll create a buffer array with our input data
+    void* buffers[2];
+    size_t sizes[2];
+    
+    // Split input data into two parts for demonstration
+    size_t half_size = size / 2;
+    
+    // First buffer: first half of input
+    buffers[0] = malloc(half_size);
+    if (buffers[0]) {
+        memcpy(buffers[0], data, half_size);
+        sizes[0] = half_size;
+    }
+    
+    // Second buffer: second half of input
+    buffers[1] = malloc(size - half_size);
+    if (buffers[1]) {
+        memcpy(buffers[1], data + half_size, size - half_size);
+        sizes[1] = size - half_size;
+    }
+    
+    // Try to load from buffers if we have valid buffers
+    if (buffers[0] && buffers[1]) {
+        if (magic_load_buffers(cookie, buffers, sizes, 2) != 0) {
+            // If loading from buffers fails, we'll try loading default database
+            magic_load(cookie, nullptr);
+        }
+    } else {
+        // If memory allocation failed, load default database
+        magic_load(cookie, nullptr);
+    }
 
-    // Initialize multi encoder
-    vpx_rational_t dsf;
-     id_000017_initMultiEncoder(&encoder_ctx, encoder_iface, &encoder_cfg, 1, 0, &dsf, VPX_ENCODER_ABI_VERSION);
+    // 6. Get a parameter to verify it was set
+    size_t retrieved_bytes_max = 0;
+    magic_getparam(cookie, MAGIC_PARAM_BYTES_MAX, &retrieved_bytes_max);
 
-    // Get stream info
-    vpx_codec_stream_info_t stream_info;
-     id_000017_getStreamInfo(&encoder_ctx, &stream_info);
+    // 7. Use magic_buffer to identify the input data
+    const char* buffer_result = magic_buffer(cookie, data, size);
+    // Check for errors
+    if (buffer_result == nullptr) {
+        const char* error_msg = magic_error(cookie);
+        // error_msg might be nullptr if no error, but we don't need to use it
+    }
 
-    // Set image rectangle
-    vpx_image_t image;
-     id_000017_setImageRect(&image, 0, 0, 100, 100);
+    // 8. Create a temporary file with the input data
+    FILE* temp_file = fopen("input_file", "wb");
+    if (temp_file != nullptr) {
+        fwrite(data, 1, size, temp_file);
+        assert_file_closed(&temp_file);;
+        
+        // 9. Use magic_file to identify the file
+        const char* file_result = magic_file(cookie, "input_file");
+        // Check for errors
+        if (file_result == nullptr) {
+            const char* error_msg = magic_error(cookie);
+        }
+        
+        // Remove the temporary file
+        remove("input_file");
+    }
 
-    // Read TPL GOP stats
-    VpxTplGopStats tpl_gop_stats;
-    FILE *tpl_file = fopen("tpl_file", "rb");
-     id_000017_readTplGopStats(tpl_file, &tpl_gop_stats);
+    // 10. Create an output file for magic_list
+    FILE* out_file = fopen("output_file", "wb");
+    if (out_file != nullptr) {
+        // 11. List magic entries to the output file
+        if (magic_list(cookie, "output_file") != 0) {
+            const char* error_msg = magic_error(cookie);
+        }
+        assert_file_closed(&out_file);;
+        
+        // Clean up the output file
+        remove("output_file");
+    }
 
-    // Release resources
-    vpx_codec_destroy(&encoder_ctx);
-    vpx_codec_destroy(&decoder_ctx);
-    assert_file_closed(&in_file);;
-    assert_file_closed(&out_file);;
-    assert_file_closed(&tpl_file);;
+    // 12. Clean up allocated buffers
+    if (buffers[0]) {
+        free(buffers[0]);
+    }
+    if (buffers[1]) {
+        free(buffers[1]);
+    }
 
-    assert_file_closed(&tpl_file);
-	assert_file_closed(&out_file);
-	assert_file_closed(&in_file);
-	assert_fd_closed(out_fd);
-	assert_fd_closed(in_fd);
+    // 13. Close the magic cookie
+    magic_close(cookie);
+
+    assert_file_closed(&out_file);
+	assert_file_closed(&temp_file);
 	return 0;
 }

@@ -442,12 +442,12 @@ pub fn fix_driver_naming_conflict(program: &Path) -> Result<()> {
     for child in &ast.inner {
         if let Clang::FunctionDecl(fd) = &child.kind {
             if is_valid_range(&fd.range) {
-                decls.push(fd.get_name());
+                decls.push(fd.get_name().trim().to_string());
             }
         }
         if let Clang::VarDecl(vd) = &child.kind {
             if is_valid_range(&vd.range) {
-                let name = vd.get_name_as_string();
+                let name = vd.get_name_as_string().trim().to_string();
                 decls.push(name);
             }
         }
