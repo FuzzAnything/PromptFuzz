@@ -147,7 +147,7 @@ def analyze_log_directory(directory_path):
             file_completion = 0
             file_total = 0
             
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     pm = re.search(r"Prompt Tokens:\s*(\d+)", line)
                     if pm:
