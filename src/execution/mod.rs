@@ -745,7 +745,8 @@ impl Executor {
         }
         pool.join();
         if error_occurred.load(Ordering::SeqCst) {
-            eyre::bail!("Concurrent transform failed!");
+            log::error!("Concurrent transform failed!");
+            //eyre::bail!("Concurrent transform failed!");
         }
         Ok(())
     }

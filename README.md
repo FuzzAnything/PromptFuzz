@@ -10,6 +10,7 @@ PromptFuzz is currently regarded as the leading approach for generating fuzz dri
 
 
 ## Relase Notes:
+- Release [v1.0.0](https://github.com/FuzzAnything/PromptFuzz/releases/tag/v1.0.0). Support [AFLPlusPlus](AFLPlusPlus.md), more libraries and fixed many panic bugs! (2026-04-10)
 - Upgrade **Clang** and **LLVM** versions to 18! (2025-06-07)
 - Upgrade **async_openai** sdk version to 0.28 to support OPENAI interface new features. (2025-06-05)
 - Support **OpenAI specification**! You can use any LLMs via the standard OPENAI specification. （2025-05-02)
@@ -68,6 +69,10 @@ PromptFuzz detects uniquely interesting bugs:
 
 # Usage
 See in [Usage](USAGE.md)
+
+
+## Trouble Shooting
+PromptFuzz customized both static and dynamic analysis on the generated harnesses to ensure the harness effectiveness and bug detection accuracy. As LLMs can generate a diverse both C and C++ syntax, our predefined analysis could be panic when it encouters some corner cases. If you encountered that cases, please reproduce that issue with `RUST_BACKTRACE=1` and report it. If possible, let your coding pilot (using a powerful LLM) try to identifiy the issues and fix them. Welcome PRs.
 
 
 ## 🎈Future Works

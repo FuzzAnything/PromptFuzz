@@ -3,6 +3,8 @@ import re
 import argparse
 import json
 import subprocess
+import matplotlib.pyplot as plt
+import matplotlib as mpl
 from afl_script import get_cov_shared_lib_path
 
 ROOT_DIR = "/root/promptfuzz"
@@ -145,7 +147,7 @@ def analyze_log_directory(directory_path):
             file_completion = 0
             file_total = 0
             
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     pm = re.search(r"Prompt Tokens:\s*(\d+)", line)
                     if pm:
@@ -181,6 +183,68 @@ def analyze_log_directory(directory_path):
         "Total Cost($)": grand_total_cost
     }
 
+def plot_coverage_growth(project, statistics_dir):
+    json_path = os.path.join(statistics_dir, "coverage_growth.json")
+    if not os.path.isfile(json_path):
+        print(f"Error: Could not find coverage data at {json_path}")
+        return
+        
+    try:
+        with open(json_path, "r") as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"Error reading {json_path}: {e}")
+        return
+        
+    times_sec = data.get("times", [])
+    coverages = data.get("coverages", [])
+    
+    if not times_sec or not coverages:
+        print("Error: Empty or invalid data in coverage_growth.json")
+        return
+        
+    # Convert times from seconds to hours
+    times_hours = [t / 3600.0 for t in times_sec]
+    
+    # Configure Academic Style
+    plt.style.use('seaborn-v0_8-paper')
+    mpl.rcParams['font.family'] = 'serif'
+    mpl.rcParams['axes.labelsize'] = 12
+    mpl.rcParams['xtick.labelsize'] = 10
+    mpl.rcParams['ytick.labelsize'] = 10
+    mpl.rcParams['axes.titlesize'] = 14
+    mpl.rcParams['legend.fontsize'] = 10
+    mpl.rcParams['figure.dpi'] = 300
+    mpl.rcParams['savefig.dpi'] = 300
+    
+    plt.figure(figsize=(8, 5))
+    
+    # Plot data
+    plt.plot(times_hours, coverages, linestyle='-', marker='', color='#1f77b4', linewidth=2, label=project)
+    
+    # Configure axes
+    plt.xlabel('Time (Hours)')
+    plt.ylabel('Covered Branches')
+    
+    max_time = max(times_hours) if times_hours else 0
+    plt.xlim(0, max(24.0, max_time + 0.5))
+    
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.title('Coverage Growth Over Time')
+    plt.legend(loc='lower right')
+    
+    plt.tight_layout()
+    
+    output_png = os.path.join(statistics_dir, "coverage_growth_24h_chart.png")
+    output_pdf = os.path.join(statistics_dir, "coverage_growth_24h_chart.pdf")
+    
+    plt.savefig(output_png, format='png', bbox_inches='tight')
+    plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
+    plt.close()
+    
+    print(f"Coverage growth charts saved to:\n  - {output_png}\n  - {output_pdf}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Analyze results and plot branch coverage.")
     parser.add_argument("project", help="Project name (e.g., libpng, curl)")
@@ -214,6 +278,9 @@ def main():
         f.write(f"Final Covered Branches: {final_branches}\n")
         
     print(f"Statistics saved to {cost_file_path}")
+    
+    # 5. Plot coverage growth curve
+    plot_coverage_growth(project, statistics_dir)
 
 if __name__ == "__main__":
     main()

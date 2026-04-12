@@ -14,7 +14,7 @@ docker run -itd --init -v $(pwd):/root/promptfuzz:Z --security-opt seccomp=uncon
 ```
 Then, attach into the docker container:
 ```
-docker exec -it${CONTAINER_NAME} /bin/bash
+docker exec -it ${CONTAINER_NAME} /bin/bash
 # using tmux to maintian a persistent session
 $ tmux new
 ```
@@ -56,6 +56,12 @@ There are several options that can be tuned in the configuration of promptfuzz. 
 ```
 user@ubuntu$ cargo run --bin fuzzer -- --help
 ```
+
+Collect statistics from the fuzz driver generation process:
+```
+python3 experiments/analyze_statistics.py libaom
+```
+The results will be saved in `output/libaom/statistics`.
 
 ### 5. Run fuzz drivers
 Once the fuzz drivers generated finish, you should follow the follow steps to run the fuzz drivers and detect bugs.
