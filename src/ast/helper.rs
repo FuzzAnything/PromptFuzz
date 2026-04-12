@@ -167,7 +167,7 @@ impl CommomHelper for Node {
                 } else {
                     eyre::bail!("Other node has no children: {self:#?}")
                 }
-            },
+            }
             _ => {
                 if let Some(first) = self.inner.first() {
                     let start = first.get_source_range()?.0;

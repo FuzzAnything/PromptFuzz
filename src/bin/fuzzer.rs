@@ -1,7 +1,9 @@
 use eyre::Result;
 use prompt_fuzz::{
     config::{self, get_config},
-    fuzzer::Fuzzer, init_logger};
+    fuzzer::Fuzzer,
+    init_logger,
+};
 
 fn main() -> Result<()> {
     dotenv::dotenv().ok();

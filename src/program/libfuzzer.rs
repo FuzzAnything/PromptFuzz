@@ -12,10 +12,10 @@ use base64::Engine;
 use eyre::{Context, Result};
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
-use std::sync::RwLock;
 /// LibFuzzer's integeration: tranformation, synthesis, execution and sanitizaiton
 use std::path::{Path, PathBuf};
 use std::process::Child;
+use std::sync::RwLock;
 
 use super::shim::{FuzzerShim, Integer};
 use super::Program;
@@ -124,12 +124,19 @@ impl LibFuzzer {
         Ok(())
     }
 
-    fn minimize_fuzzer_corpus_before_constraint_infer(&self, program_path: &Path) -> Result<PathBuf> {
+    fn minimize_fuzzer_corpus_before_constraint_infer(
+        &self,
+        program_path: &Path,
+    ) -> Result<PathBuf> {
         let executor = Executor::new(&self.deopt)?;
         let program = Program::load_from_path(program_path)?;
         let work_seed = self.deopt.get_work_seed_by_id(program.id)?;
         let fuzzer_sancov = work_seed.to_path_buf().with_extension("sancov");
-        executor.compile(vec![program_path], &fuzzer_sancov, crate::execution::Compile::Minimize)?;
+        executor.compile(
+            vec![program_path],
+            &fuzzer_sancov,
+            crate::execution::Compile::Minimize,
+        )?;
 
         let work_dir = deopt::utils::get_file_dirname(&work_seed);
         let minimized: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
@@ -297,8 +304,10 @@ impl LibFuzzer {
         out_corpus_dir: &Path,
     ) -> Result<()> {
         if !std::fs::exists(in_corpus_dir)? {
-            log::warn!("Corpus directory doesn't exist: {in_corpus_dir:?}, skip it and continue...");
-            return Ok(())
+            log::warn!(
+                "Corpus directory doesn't exist: {in_corpus_dir:?}, skip it and continue..."
+            );
+            return Ok(());
         }
 
         let files = crate::deopt::utils::read_all_files_in_dir(in_corpus_dir)?;
@@ -618,7 +627,10 @@ pub fn respawn_libfuzzer_process(fuzzer_dir: &Path, executor: &Executor) -> Resu
 
         // if this driver error many times
         let err_count = {
-            let error_count_map_guard = ERROR_COUNT.get_or_init(|| RwLock::new(HashMap::new())).read().unwrap();
+            let error_count_map_guard = ERROR_COUNT
+                .get_or_init(|| RwLock::new(HashMap::new()))
+                .read()
+                .unwrap();
             if let Some(value) = error_count_map_guard.get(&driver_id) {
                 *value
             } else {
@@ -626,7 +638,10 @@ pub fn respawn_libfuzzer_process(fuzzer_dir: &Path, executor: &Executor) -> Resu
             }
         };
 
-        if let Ok(mut error_count_map_guard) = ERROR_COUNT.get_or_init(|| RwLock::new(HashMap::new())).write() {
+        if let Ok(mut error_count_map_guard) = ERROR_COUNT
+            .get_or_init(|| RwLock::new(HashMap::new()))
+            .write()
+        {
             *error_count_map_guard.entry(driver_id).or_default() += 1;
         }
 
@@ -863,7 +878,11 @@ pub mod sanitize_crash {
             }
             let (trap_call, trap_loc) =
                 parse_call_stack_line(line).context(format!("error when parse line: {line}"))?;
-            if !trap_loc.contains(&crate::deopt::Deopt::get_crate_build_dir()?.to_string_lossy().to_string()) {
+            if !trap_loc.contains(
+                &crate::deopt::Deopt::get_crate_build_dir()?
+                    .to_string_lossy()
+                    .to_string(),
+            ) {
                 continue;
             }
             if trap_call.contains("LLVMFuzzerTestOneInput") {

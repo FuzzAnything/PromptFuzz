@@ -1,7 +1,12 @@
 use crate::{
-    Deopt, config::{get_config, get_library_name}, deopt::utils::get_file_dirname, feedback::clang_coverage::{
-        GlobalFeature, utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage}
-    }, program::{Program, serde::Serialize, transform::Transformer}
+    config::{get_config, get_library_name},
+    deopt::utils::get_file_dirname,
+    feedback::clang_coverage::{
+        utils::{dump_fuzzer_coverage, sanitize_by_fuzzer_coverage},
+        GlobalFeature,
+    },
+    program::{serde::Serialize, transform::Transformer, Program},
+    Deopt,
 };
 use eyre::Result;
 use std::{
@@ -238,7 +243,6 @@ impl Executor {
         Ok(has_errs)
     }
 
-
     // Evolving the fuzzing corpus by finding the new coverage corpus files and merge them in shared corpus.
     fn evolve_corpus(&self, program_path: &Path) -> Result<()> {
         log::debug!("Evolve fuzzing corpus by merge new coverage corpora");
@@ -271,7 +275,10 @@ impl Executor {
                 intrestings.push(corpus_file);
             }
         }
-        log::debug!("Find {} new interesting corpus files to evolve the corpus.", intrestings.len());
+        log::debug!(
+            "Find {} new interesting corpus files to evolve the corpus.",
+            intrestings.len()
+        );
         self.deopt.copy_file_to_shared_corpus(intrestings)?;
         let buf = serde_json::to_vec(&global_featuers)?;
         std::fs::write(global_feature_file, buf)?;

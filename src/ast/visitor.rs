@@ -529,7 +529,7 @@ pub mod utils {
                     return ty;
                 }
                 unreachable!("{arg:#?}")
-            },
+            }
             Clang::BinaryOperator(bo) => {
                 let inner = bo.get_lhs(arg);
                 return get_call_arg_node_type(inner);

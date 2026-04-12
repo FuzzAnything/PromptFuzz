@@ -8,8 +8,11 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::{deopt::utils::{get_file_dirname, is_dir_empty}, feedback::observer::Observer};
 use crate::execution::Executor;
+use crate::{
+    deopt::utils::{get_file_dirname, is_dir_empty},
+    feedback::observer::Observer,
+};
 
 use super::branches::{parse_branch, Branch};
 
@@ -291,7 +294,7 @@ impl GlobalFeature {
         let mut gf = Self::default();
         let shared_corpus = executor.deopt.get_library_shared_corpus_dir()?;
         if is_dir_empty(&shared_corpus)? {
-            return Ok(gf)
+            return Ok(gf);
         }
 
         let sancov_dict = Executor::collect_sancov_from_corpus(fuzzer, &shared_corpus)?;
@@ -325,7 +328,7 @@ impl Executor {
     pub fn merge_profdata(profraw_files: &Vec<PathBuf>, profdata: &Path) -> Result<()> {
         if profraw_files.is_empty() {
             log::warn!("profraw_files is empty, skip merging profdata.");
-            return Ok(())
+            return Ok(());
         }
 
         let mut output = Command::new("llvm-profdata");
@@ -398,7 +401,10 @@ impl Executor {
             .arg(binary_cov)
             .arg(format!("--instr-profile={}", profdata.to_string_lossy()))
             .arg("-format=lcov")
-            .arg(format!("--ignore-filename-regex=.*{}.*", crate::deopt::Deopt::get_crate_build_dir()?.to_string_lossy()))
+            .arg(format!(
+                "--ignore-filename-regex=.*{}.*",
+                crate::deopt::Deopt::get_crate_build_dir()?.to_string_lossy()
+            ))
             .stdout(Stdio::piped())
             .output()?;
         if !output.status.success() {
@@ -471,8 +477,10 @@ impl Executor {
 
         // run fuzzer with cov on each corpus file.
         if std::fs::read_dir(&minimized_corpus)?.next().is_none() {
-            log::error!("minimized corpus is empty, skip collecting coverage for fuzzer: {fuzzer_dir:?}");
-            return Ok(())
+            log::error!(
+                "minimized corpus is empty, skip collecting coverage for fuzzer: {fuzzer_dir:?}"
+            );
+            return Ok(());
         }
         let profdata: PathBuf = crate::deopt::Deopt::get_coverage_file_by_dir(fuzzer_dir);
         self.execute_cov_fuzzer_pool(&fuzzer_binary, vec![&minimized_corpus], &profdata)?;
@@ -783,5 +791,4 @@ mod tests {
         executor.collect_lib_cov_per_fuzzer(&fuzzer_dir)?;
         Ok(())
     }
-
 }

@@ -1,4 +1,7 @@
-use async_openai::types::{ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs, ChatCompletionRequestMessage};
+use async_openai::types::{
+    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+    ChatCompletionRequestUserMessageArgs,
+};
 use once_cell::sync::OnceCell;
 use std::{
     collections::{HashMap, HashSet},
@@ -18,7 +21,6 @@ impl Prompt {
     }
 }
 
-
 impl Display for Prompt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.serialize())
@@ -29,21 +31,33 @@ static COUNTER: OnceCell<RwLock<HashMap<String, u32>>> = OnceCell::new();
 
 // Count the times of functions have been prompted.
 pub fn get_prompt_counter_value(key: &str) -> Option<u32> {
-    let guard = COUNTER.get_or_init(|| RwLock::new(HashMap::new())).read().unwrap();
+    let guard = COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .read()
+        .unwrap();
     guard.get(key).copied()
 }
 
 pub fn set_prompt_counter_value(key: String, value: u32) {
-    let mut guard = COUNTER.get_or_init(|| RwLock::new(HashMap::new())).write().unwrap();
+    let mut guard = COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .write()
+        .unwrap();
     guard.insert(key, value);
 }
 
 pub fn save_prompt_counter() {
     let deopt = Deopt::new(get_library_name()).unwrap();
-    let counter_path: PathBuf = [deopt.get_library_misc_dir().unwrap(), "prompt_counter.json".into()]
-        .iter()
-        .collect();
-    let guard = COUNTER.get_or_init(|| RwLock::new(HashMap::new())).read().unwrap();
+    let counter_path: PathBuf = [
+        deopt.get_library_misc_dir().unwrap(),
+        "prompt_counter.json".into(),
+    ]
+    .iter()
+    .collect();
+    let guard = COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .read()
+        .unwrap();
     let json = serde_json::to_string(&*guard).unwrap();
     std::fs::write(counter_path, json).unwrap();
 }
@@ -85,7 +99,6 @@ impl Prompt {
         self.gadgets = combination
     }
 
-
     /// from generative prompt to API combination vec.
     pub fn get_combination(&self) -> eyre::Result<Vec<&'static FuncGadget>> {
         Ok(self.gadgets.clone())
@@ -104,22 +117,24 @@ impl Prompt {
             .replace("{combinations}", &combination_to_str(&self.gadgets));
         let sys_msg = ChatCompletionRequestSystemMessageArgs::default()
             .content(sys_msg)
-            .build().unwrap()
+            .build()
+            .unwrap()
             .into();
         let user_msg = ChatCompletionRequestUserMessageArgs::default()
             .content(user_msg)
-            .build().unwrap()
+            .build()
+            .unwrap()
             .into();
         vec![sys_msg, user_msg]
     }
-
 }
 
 /// get the message of the system role for generative tasks.
 pub fn get_sys_gen_message(ctx: String) -> String {
     let deopt = Deopt::new(get_library_name()).unwrap();
     let mut template = config::SYSTEM_GEN_TEMPLATE.to_string();
-    let mut ctx_template = config::SYSTEM_CONTEXT_TEMPLATE.replace("{project}", &get_library_name());
+    let mut ctx_template =
+        config::SYSTEM_CONTEXT_TEMPLATE.replace("{project}", &get_library_name());
     if let Some(desc) = deopt.config.desc {
         ctx_template.insert_str(0, &desc);
     }
@@ -212,4 +227,3 @@ impl Serialize for Prompt {
         combination_to_str(&self.gadgets)
     }
 }
-

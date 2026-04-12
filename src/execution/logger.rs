@@ -1,5 +1,7 @@
 use std::{
-    path::PathBuf, sync::{RwLock, RwLockReadGuard, RwLockWriteGuard}, time::{self, Instant}
+    path::PathBuf,
+    sync::{RwLock, RwLockReadGuard, RwLockWriteGuard},
+    time::{self, Instant},
 };
 
 use eyre::Result;

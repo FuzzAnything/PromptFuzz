@@ -12,7 +12,6 @@ pub static OPENAI_MODEL_NAME: OnceCell<String> = OnceCell::new();
 
 pub static OPENAI_ENDPOINT: OnceCell<String> = OnceCell::new();
 
-
 // General model configure options.
 pub const MUTATE_LINE: usize = 3;
 
@@ -76,10 +75,7 @@ pub const COVERAGE_FLAGS: [&str; 9] = [
     "-ftrivial-auto-var-init=zero",
 ];
 
-pub const SANCOV_FLAGS: [&str; 2] = [
-    "-fsanitize=address",
-    "-fsanitize-coverage=trace-pc-guard"
-];
+pub const SANCOV_FLAGS: [&str; 2] = ["-fsanitize=address", "-fsanitize-coverage=trace-pc-guard"];
 
 pub const ASAN_OPTIONS: [&str; 2] = ["exitcode=168", "alloc_dealloc_mismatch=0"];
 
@@ -91,23 +87,23 @@ pub fn get_openai_endpoint() -> String {
     OPENAI_ENDPOINT.get().unwrap().to_string()
 }
 
-
 pub fn init_openai_env() {
-    let model = std::env::var("OPENAI_MODEL_NAME").unwrap_or_else(|_| panic!("OPENAI_MODEL_NAME not set"));
-    let endpoint = std::env::var("OPENAI_ENDPOINT").unwrap_or_else(|_| panic!("OPENAI_ENDPOINT not set"));
+    let model =
+        std::env::var("OPENAI_MODEL_NAME").unwrap_or_else(|_| panic!("OPENAI_MODEL_NAME not set"));
+    let endpoint =
+        std::env::var("OPENAI_ENDPOINT").unwrap_or_else(|_| panic!("OPENAI_ENDPOINT not set"));
 
     OPENAI_MODEL_NAME.set(model).unwrap();
     OPENAI_ENDPOINT.set(endpoint).unwrap();
 }
 
-pub fn get_config() -> RwLockReadGuard<'static, Config>{
+pub fn get_config() -> RwLockReadGuard<'static, Config> {
     CONFIG_INSTANCE.get().unwrap().read().unwrap()
 }
 
-
 pub fn get_library_name() -> String {
     let config = CONFIG_INSTANCE.get().unwrap().read().unwrap();
-    
+
     config.target.clone()
 }
 
@@ -138,7 +134,11 @@ pub fn parse_config() -> eyre::Result<()> {
     }
     let lib = deopt.get_library_build_lib_path()?;
     if !lib.exists() {
-        eyre::bail!("Cannot find the build library {} in `{}` dir, please build it by build.sh in anvance.", deopt.config.project_name, Deopt::get_crate_build_dir()?.display());
+        eyre::bail!(
+            "Cannot find the build library {} in `{}` dir, please build it by build.sh in anvance.",
+            deopt.config.project_name,
+            Deopt::get_crate_build_dir()?.display()
+        );
     }
     Ok(())
 }
@@ -164,7 +164,7 @@ pub struct Config {
     /// whether use the power schedule to mutate prompt. true for purly random mutation of prompt.
     #[arg(short, long, default_value = "false")]
     pub disable_power_schedule: bool,
-    /// whether disable the coverage validation for generated harnesses. 
+    /// whether disable the coverage validation for generated harnesses.
     #[arg(long = "disable-coverage-validation", default_value = "false")]
     pub disable_coverage_check: bool,
     /// The number of successful programs should be generated for a prompt. Once satisfy, a round is finished.
@@ -211,7 +211,6 @@ impl Config {
         crate::init_debug_logger().unwrap();
     }
 }
-
 
 /// custom configuration of each project
 #[derive(Debug, Default, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

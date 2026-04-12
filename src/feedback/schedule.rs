@@ -4,9 +4,14 @@ use crate::{
     deopt::Deopt,
     mutation::mutate_prompt,
     program::{
-        gadget::{get_func_gadget, get_func_gadgets, FuncGadget}, get_exec_counter_value, load_exec_counter, rand::{prob_coin, rand_comb_len, weighted_choose}, set_exec_counter_value
+        gadget::{get_func_gadget, get_func_gadgets, FuncGadget},
+        get_exec_counter_value, load_exec_counter,
+        rand::{prob_coin, rand_comb_len, weighted_choose},
+        set_exec_counter_value,
     },
-    request::prompt::{get_prompt_counter_value, load_prompt_counter, set_prompt_counter_value, Prompt},
+    request::prompt::{
+        get_prompt_counter_value, load_prompt_counter, set_prompt_counter_value, Prompt,
+    },
 };
 
 pub struct Seed {
@@ -106,13 +111,7 @@ impl Schedule {
             let coverage = api_coverage.get(api_name).unwrap();
             let prompt_count = get_prompt_counter_value(api_name).unwrap_or(0);
             let exec_count = get_exec_counter_value(api_name).unwrap_or(0);
-            let seed = Seed::new(
-                api_name,
-                *coverage,
-                exec_count,
-                prompt_count,
-                self.exponent,
-            );
+            let seed = Seed::new(api_name, *coverage, exec_count, prompt_count, self.exponent);
             self.seeds.insert(api_name.to_string(), seed);
         }
         let energies_str: Vec<f32> = self.seeds.values().map(|x| x.energy).collect();

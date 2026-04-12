@@ -100,9 +100,7 @@ impl CallGraph {
     }
 
     pub fn get_direct_callees(&self, func: &str) -> Vec<&str> {
-        let node = self
-            .node_map
-            .get(func);
+        let node = self.node_map.get(func);
         if node.is_none() {
             return Vec::new();
         }

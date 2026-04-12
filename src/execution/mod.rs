@@ -46,52 +46,49 @@ fn wrap_command_with_bubblewrap<S: AsRef<OsStr> + Debug>(
     asan_options: &str,
     fuzzer_args: &[String],
 ) -> Command {
-
     // Reset the command to use bwrap as the main executable
     let mut cmd = Command::new("bwrap");
-    
-    
+
     // Mount essential system directories as read-only
     cmd.arg("--ro-bind").arg("/").arg("/");
     cmd.arg("--proc").arg("/proc");
     cmd.arg("--dev").arg("/dev");
     cmd.arg("--tmpfs").arg("/tmp");
 
-
     // Deny network access
     cmd.arg("--unshare-net");
     //cmd.arg("--unshare-pid");
     cmd.arg("--die-with-parent");
     cmd.arg("--new-session");
-    
+
     // Mount the working directory with read-write access
     //let workspace_root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/"));
-    cmd.arg("--bind").arg(Deopt::get_crate_dir().unwrap()).arg(Deopt::get_crate_dir().unwrap());
-    
+    cmd.arg("--bind")
+        .arg(Deopt::get_crate_dir().unwrap())
+        .arg(Deopt::get_crate_dir().unwrap());
+
     // Pass through environment variables
     for (key, val) in extra_envs {
-        cmd.arg("--setenv")
-            .arg(key.as_ref())
-            .arg(val.as_ref());
+        cmd.arg("--setenv").arg(key.as_ref()).arg(val.as_ref());
     }
-    
+
     // Set ASAN_OPTIONS
     cmd.arg("--setenv").arg("ASAN_OPTIONS").arg(asan_options);
     cmd.arg("stdbuf").arg("-oL").arg("-eL");
-    
+
     // Add the actual binary to execute
     cmd.arg(binary);
-    
+
     // Add fuzzer-specific arguments
     for arg in fuzzer_args {
         cmd.arg(arg);
     }
-    
+
     // Add extra arguments
     for arg in extra_args {
         cmd.arg(arg.as_ref());
     }
-    
+
     log::trace!("Running with bubblewrap sandbox: {:?}", cmd);
     return cmd;
 }
@@ -227,13 +224,16 @@ impl Executor {
             &asan_options,
             &fuzzer_args,
         );
-        
+
         let program = cmd.get_program().to_string_lossy();
-        let args: Vec<String> = cmd.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        let args: Vec<String> = cmd
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
 
         let full_cmd_string = format!("{} {}", program, args.join(" "));
         log::trace!("Raw shell string: {}", full_cmd_string);
-        
+
         let child = cmd
             .current_dir(current_dir)
             .stdin(Stdio::null())
@@ -511,7 +511,10 @@ impl Executor {
         Ok(cov)
     }
 
-    pub fn symbolize_sancov_file(fuzzer_binary: &Path, sancov_file: &Path) -> Result<Option<Sancov>> {
+    pub fn symbolize_sancov_file(
+        fuzzer_binary: &Path,
+        sancov_file: &Path,
+    ) -> Result<Option<Sancov>> {
         let cmd = Command::new("sancov")
             .arg("-symbolize")
             .arg(fuzzer_binary)
@@ -521,38 +524,59 @@ impl Executor {
             .stderr(Stdio::piped())
             .spawn()
             .expect("failed to spawn the process for symbolizing sancov file");
-        let output = cmd.wait_with_output().expect("failed to wait for the process for symbolizing sancov file");
+        let output = cmd
+            .wait_with_output()
+            .expect("failed to wait for the process for symbolizing sancov file");
         if !output.status.success() {
             let err_msg = String::from_utf8_lossy(&output.stderr);
-            log::warn!("Error executing sancov for symbolization: {err_msg}, sancov file: {sancov_file:?}");
+            log::warn!(
+                "Error executing sancov for symbolization: {err_msg}, sancov file: {sancov_file:?}"
+            );
             return Ok(None);
         }
         let sancov_info = serde_json::from_slice::<Sancov>(&output.stdout)?;
-        log::trace!("Symbolized sancov file {sancov_file:?} with: {} covered points", sancov_info.covered_points.len());
+        log::trace!(
+            "Symbolized sancov file {sancov_file:?} with: {} covered points",
+            sancov_info.covered_points.len()
+        );
         Ok(Some(sancov_info))
     }
 
-    fn get_sancov_file_from_sancov_dir(sancov_dir: &Path) -> Option<PathBuf> {
+    pub fn get_sancov_file_from_sancov_dir(sancov_dir: &Path) -> Option<PathBuf> {
         for entry in std::fs::read_dir(sancov_dir).ok()? {
             let path = entry.ok()?.path();
-            if path.is_file() && path.extension().is_some() && path.extension().unwrap() == "sancov" {
+            if path.is_file() && path.extension().is_some() && path.extension().unwrap() == "sancov"
+            {
                 return Some(path);
             }
         }
         None
     }
 
-    pub fn collect_sancov_from_a_file(fuzzer_sancov: &Path, corpus_file: &Path, sancov_dir: &Path) -> Result<Option<Sancov>> {
-        let corpus_file_name = corpus_file.file_name().unwrap_or_else(|| OsStr::new("unknown_corpus"));
+    pub fn collect_sancov_from_a_file(
+        fuzzer_sancov: &Path,
+        corpus_file: &Path,
+        sancov_dir: &Path,
+    ) -> Result<Option<Sancov>> {
+        let corpus_file_name = corpus_file
+            .file_name()
+            .unwrap_or_else(|| OsStr::new("unknown_corpus"));
         let sancov_dir = sancov_dir.to_path_buf().join(corpus_file_name);
         create_dir_if_nonexist(&sancov_dir)?;
         let extra_envs = vec![];
-        let mut cmd = wrap_command_with_bubblewrap(fuzzer_sancov, &vec![corpus_file.as_os_str().to_os_string()], &extra_envs, format!("coverage=1:coverage_dir=\"{}\"", sancov_dir.to_string_lossy()).as_str(), &[]); 
-        let mut child = cmd
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-            
+        let mut cmd = wrap_command_with_bubblewrap(
+            fuzzer_sancov,
+            &vec![corpus_file.as_os_str().to_os_string()],
+            &extra_envs,
+            format!(
+                "coverage=1:coverage_dir=\"{}\"",
+                sancov_dir.to_string_lossy()
+            )
+            .as_str(),
+            &[],
+        );
+        let mut child = cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+
         let timeout = std::time::Duration::from_secs(10);
         let status = match child.wait_timeout(timeout).unwrap_or(None) {
             Some(status) => status,
@@ -581,8 +605,10 @@ impl Executor {
         }
     }
 
-
-    pub fn collect_sancov_from_corpus(fuzzer_sancov: &Path, corpus: &Path) -> Result<HashMap<PathBuf, Sancov>> {
+    pub fn collect_sancov_from_corpus(
+        fuzzer_sancov: &Path,
+        corpus: &Path,
+    ) -> Result<HashMap<PathBuf, Sancov>> {
         let fuzzer_dir = get_file_dirname(fuzzer_sancov);
         let sancov_dir: PathBuf = [fuzzer_dir, "sancov".into()].iter().collect();
         std::fs::remove_dir_all(&sancov_dir).ok();
@@ -596,8 +622,10 @@ impl Executor {
             let fuzzer_sancov = fuzzer_sancov.to_path_buf();
             let sancov_dir = sancov_dir.to_path_buf();
             let corpus_dict = Arc::clone(&corpus_dict);
-            pool.execute( move || {
-                let sancov_info = Self::collect_sancov_from_a_file(&fuzzer_sancov, &corpus_file, &sancov_dir).unwrap_or(None);
+            pool.execute(move || {
+                let sancov_info =
+                    Self::collect_sancov_from_a_file(&fuzzer_sancov, &corpus_file, &sancov_dir)
+                        .unwrap_or(None);
                 if let Some(sancov_info) = sancov_info {
                     let mut dict = corpus_dict.lock().unwrap();
                     dict.insert(corpus_file, sancov_info);
@@ -607,16 +635,23 @@ impl Executor {
         pool.join();
         let dict = Arc::try_unwrap(corpus_dict).unwrap().into_inner().unwrap();
         Ok(dict)
-
     }
-    
-    pub fn select_corpus_by_examining_sancov(corpus_dict: HashMap<PathBuf, Sancov>) -> Vec<PathBuf> {
+
+    pub fn select_corpus_by_examining_sancov(
+        corpus_dict: HashMap<PathBuf, Sancov>,
+    ) -> Vec<PathBuf> {
         let mut minimal_set: Vec<PathBuf> = Vec::new();
         let mut feature_set = std::collections::HashSet::new();
         for (file_path, sancov_info) in corpus_dict {
             let covered_points: HashSet<String> = sancov_info.covered_points.into_iter().collect();
-            let difference: std::collections::HashSet<String> = covered_points.difference(&feature_set).cloned().collect();
-            log::trace!("Examined file {file_path:?}, covered points: {}, difference: {}, feature_set: {}", covered_points.len(), difference.len(), feature_set.len());
+            let difference: std::collections::HashSet<String> =
+                covered_points.difference(&feature_set).cloned().collect();
+            log::trace!(
+                "Examined file {file_path:?}, covered points: {}, difference: {}, feature_set: {}",
+                covered_points.len(),
+                difference.len(),
+                feature_set.len()
+            );
             if difference.is_empty() {
                 continue;
             }
@@ -649,10 +684,13 @@ impl Executor {
             let _ = std::fs::copy(&file, &dest);
             log::trace!("Selected file {file:?} for minimization, copied to {dest:?}");
         }
-        log::debug!("Minimization completed. Selected {} files out of {}.", selected_corpus.len(), sancov_dict_size);
+        log::debug!(
+            "Minimization completed. Selected {} files out of {}.",
+            selected_corpus.len(),
+            sancov_dict_size
+        );
         Ok(())
     }
-
 
     /// concurrently transform programs to fuzzers.
     pub fn concurrent_transform(

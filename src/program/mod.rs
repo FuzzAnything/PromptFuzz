@@ -25,12 +25,18 @@ use regex::Regex;
 static EXEC_COUNTER: OnceCell<RwLock<HashMap<String, u32>>> = OnceCell::new();
 
 pub fn get_exec_counter_value(key: &str) -> Option<u32> {
-    let guard = EXEC_COUNTER.get_or_init(|| RwLock::new(HashMap::new())).read().unwrap();
-    guard.get(key).copied() 
+    let guard = EXEC_COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .read()
+        .unwrap();
+    guard.get(key).copied()
 }
 
 pub fn set_exec_counter_value(key: String, value: u32) {
-    let mut guard = EXEC_COUNTER.get_or_init(|| RwLock::new(HashMap::new())).write().unwrap();
+    let mut guard = EXEC_COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .write()
+        .unwrap();
     guard.insert(key, value);
 }
 
@@ -39,9 +45,12 @@ pub fn save_exec_counter(deopt: &Deopt) {
         deopt.get_library_misc_dir().unwrap(),
         "exec_counter.json".into(),
     ]
-        .iter()
-        .collect();
-    let guard = EXEC_COUNTER.get_or_init(|| RwLock::new(HashMap::new())).read().unwrap();
+    .iter()
+    .collect();
+    let guard = EXEC_COUNTER
+        .get_or_init(|| RwLock::new(HashMap::new()))
+        .read()
+        .unwrap();
     let json = serde_json::to_string(&*guard).unwrap();
     std::fs::write(counter_path, json).unwrap();
 }

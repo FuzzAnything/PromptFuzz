@@ -7,17 +7,18 @@ use crate::{
     FuzzerError,
 };
 use async_openai::{
-    config::OpenAIConfig, types::{
-        ChatCompletionRequestMessage, CreateChatCompletionRequest, CreateChatCompletionRequestArgs, CreateChatCompletionResponse
-    }, Client
+    config::OpenAIConfig,
+    types::{
+        ChatCompletionRequestMessage, CreateChatCompletionRequest, CreateChatCompletionRequestArgs,
+        CreateChatCompletionResponse,
+    },
+    Client,
 };
 use eyre::Result;
-use once_cell::sync::OnceCell;
 use futures::future::join_all;
+use once_cell::sync::OnceCell;
 use serde::Serialize;
 use serde_json::Value;
-
-
 
 use super::Handler;
 
@@ -39,7 +40,7 @@ impl TokenUsage {
             cached_tokens: 0,
         }
     }
-    
+
     pub fn from_response(response: &CreateChatCompletionResponse) -> Self {
         if let Some(usage) = &response.usage {
             let cached_tokens = if let Some(details) = &usage.prompt_tokens_details {
@@ -67,9 +68,9 @@ impl TokenUsage {
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
 
-
         let get_u32 = |key: &str| {
-            usage.and_then(|u| u.get(key))
+            usage
+                .and_then(|u| u.get(key))
                 .and_then(|v| v.as_u64())
                 .unwrap_or(0) as u32
         };
@@ -81,7 +82,7 @@ impl TokenUsage {
             cached_tokens,
         }
     }
-    
+
     pub fn add(&mut self, other: &TokenUsage) {
         self.prompt_tokens += other.prompt_tokens;
         self.completion_tokens += other.completion_tokens;
@@ -116,17 +117,17 @@ impl Handler for OpenAIHanler {
             futures.push(future);
         }
         let results = self.rt.block_on(join_all(futures));
-        
+
         let mut programs = Vec::new();
         let mut total_usage = TokenUsage::default();
-        
+
         for result in results {
             if let Ok((program, usage)) = result {
                 programs.push(program);
                 total_usage.add(&usage);
             }
         }
-        
+
         let elapsed = start.elapsed();
         log::info!("OpenAI Generate time: {}s", elapsed.as_secs());
         log::info!("Response Tokens\nCompletion Tokens: {}\nPrompt Tokens: {}\nTotal Tokens: {}\nCached Tokens: {}", 
@@ -134,7 +135,7 @@ impl Handler for OpenAIHanler {
                   total_usage.prompt_tokens, 
                   total_usage.total_tokens,
                   total_usage.cached_tokens);
-        
+
         Ok(programs)
     }
 }
@@ -152,7 +153,7 @@ fn get_client() -> Result<&'static Client<OpenAIConfig>> {
         let endpoint = get_openai_endpoint();
         let openai_config = OpenAIConfig::default().with_api_base(endpoint);
         let client = Client::with_config(openai_config);
-        
+
         client.with_http_client(http_client)
     });
     Ok(client)
@@ -201,19 +202,16 @@ async fn get_chat_response(
     Err(FuzzerError::RetryError(format!("{request:?}"), config::RETRY_N).into())
 }
 
-
-
 #[derive(Serialize)]
 struct CreateChatCompletionRequestExtra {
-  // https://serde.rs/attr-flatten.html
-  #[serde(flatten)] 
-  pub request: CreateChatCompletionRequest, // original request type
-  #[serde(flatten)]
-  pub extra_body: serde_json::Value, // or this can be your custom type
+    // https://serde.rs/attr-flatten.html
+    #[serde(flatten)]
+    pub request: CreateChatCompletionRequest, // original request type
+    #[serde(flatten)]
+    pub extra_body: serde_json::Value, // or this can be your custom type
 }
 
 impl CreateChatCompletionRequestExtra {
-
     pub fn with_deepseek_reason_body(request: CreateChatCompletionRequest) -> Self {
         let extra_body = serde_json::json!({
             "separate_reasoning": true,
@@ -221,10 +219,12 @@ impl CreateChatCompletionRequestExtra {
             "thinking": {"type": "enabled"}
         });
         //let extra_body = serde_json::json!({"reasoning": {"enabled": true}});
-        Self { request, extra_body: extra_body}
+        Self {
+            request,
+            extra_body: extra_body,
+        }
     }
 }
-
 
 /// Create a request for a chat prompt
 fn create_reasoning_chat_request(
@@ -247,9 +247,7 @@ fn create_reasoning_chat_request(
 }
 
 /// Get a response for a chat request
-async fn get_reasoning_chat_response(
-    request: Value,
-) -> Result<Value> {
+async fn get_reasoning_chat_response(request: Value) -> Result<Value> {
     let client = get_client().unwrap();
 
     for _retry in 0..config::RETRY_N {
@@ -272,29 +270,35 @@ async fn get_reasoning_chat_response(
     Err(FuzzerError::RetryError(format!("{request:?}"), config::RETRY_N).into())
 }
 
-
 pub async fn generate_program_by_chat(
     chat_msgs: Vec<ChatCompletionRequestMessage>,
 ) -> Result<(Program, TokenUsage)> {
-    let (content, usage) =  if get_config().deepseek_reasoning {
+    let (content, usage) = if get_config().deepseek_reasoning {
         let request = create_reasoning_chat_request(chat_msgs, None)?;
         let response = get_reasoning_chat_response(request).await?;
         let usage = TokenUsage::from_raw_response(&response);
-        let content = response["choices"][0]["message"]["content"].as_str().ok_or(eyre::eyre!("Empty response content"))?.to_string();
+        let content = response["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or(eyre::eyre!("Empty response content"))?
+            .to_string();
         (content, usage)
     } else {
         let request = create_chat_request(chat_msgs, None)?;
         let respond = get_chat_response(request).await?;
         let usage = TokenUsage::from_response(&respond);
         let choice = respond.choices.first().unwrap();
-        let content = choice.message.content.as_ref().ok_or(eyre::eyre!("Empty response content"))?.to_string();
+        let content = choice
+            .message
+            .content
+            .as_ref()
+            .ok_or(eyre::eyre!("Empty response content"))?
+            .to_string();
         (content, usage)
     };
     let content = strip_code_wrapper(&content);
     let program = Program::new(&content);
     Ok((program, usage))
 }
-
 
 fn strip_code_prefix<'a>(input: &'a str, pat: &str) -> &'a str {
     let pat = String::from_iter(["```", pat]);
@@ -331,7 +335,9 @@ fn strip_code_wrapper(input: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use async_openai::types::{ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs};
+    use async_openai::types::{
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+    };
 
     use super::*;
 
@@ -340,19 +346,21 @@ mod tests {
         dotenv::dotenv().ok();
         config::init_openai_env();
         config::Config::init_test("libaom");
-        
+
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap_or_else(|_| panic!("Unable to build the openai runtime."));
-        
+
         let messages: Vec<ChatCompletionRequestMessage> = vec![
             ChatCompletionRequestSystemMessageArgs::default()
-            .content("You are a helpful assistant.")
-            .build()?.into(),
+                .content("You are a helpful assistant.")
+                .build()?
+                .into(),
             ChatCompletionRequestUserMessageArgs::default()
-            .content("Explain Rust's ownership system in simple terms.")
-            .build()?.into()
+                .content("Explain Rust's ownership system in simple terms.")
+                .build()?
+                .into(),
         ];
 
         let request = create_reasoning_chat_request(messages, None)?;

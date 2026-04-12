@@ -4,10 +4,14 @@ use std::{
 };
 
 use crate::{
-    analysis::{adg::ADG, cfg::CFGBuilder}, config::CONFIG_INSTANCE, deopt::utils::read_sort_dir, program::{
+    analysis::{adg::ADG, cfg::CFGBuilder},
+    config::CONFIG_INSTANCE,
+    deopt::utils::read_sort_dir,
+    program::{
         gadget::{get_func_gadgets, FuncGadget},
         Program,
-    }, Deopt
+    },
+    Deopt,
 };
 use eyre::Result;
 

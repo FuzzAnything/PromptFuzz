@@ -457,9 +457,13 @@ impl Deopt {
     }
 
     pub fn get_fuzz_wrapper() -> Result<PathBuf> {
-        let path = [Deopt::get_crate_dir()?, config::FDP_PATH, "fuzz_wrapper.cc".into()]
-            .iter()
-            .collect();
+        let path = [
+            Deopt::get_crate_dir()?,
+            config::FDP_PATH,
+            "fuzz_wrapper.cc".into(),
+        ]
+        .iter()
+        .collect();
         Ok(path)
     }
 
@@ -672,10 +676,10 @@ pub mod utils {
             for header in get_library_headers(deopt).unwrap() {
                 if header.ends_with(".h") {
                     content.push_str("extern \"C\" {\n");
-                    content.push_str(&format!("#include <{header}>\n"));            
+                    content.push_str(&format!("#include <{header}>\n"));
                     content.push_str("}\n");
                 } else {
-                    content.push_str(&format!("#include <{header}>\n"));            
+                    content.push_str(&format!("#include <{header}>\n"));
                 }
             }
             content
@@ -737,7 +741,7 @@ pub mod utils {
         })
     }
 
-        /// get the build static library linked with sanitizers
+    /// get the build static library linked with sanitizers
     pub fn get_sancov_lib_path(deopt: &Deopt) -> &'static PathBuf {
         static PATH: OnceCell<PathBuf> = OnceCell::new();
         PATH.get_or_init(|| {

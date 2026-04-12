@@ -1,8 +1,5 @@
 /// Dynamically infer the constraints of AllocSize, LoopCount and so on influence the performance.
-use std::{
-    ffi::{OsStr, OsString},
-    sync::RwLock,
-};
+use std::{ffi::OsString, sync::RwLock};
 
 use eyre::Context;
 use once_cell::sync::OnceCell;
@@ -10,10 +7,7 @@ use once_cell::sync::OnceCell;
 use crate::{
     deopt::utils::get_file_dirname,
     execution::{logger::ProgramError, Executor},
-    feedback::{
-        clang_coverage::{utils::sanitize_by_fuzzer_coverage, CodeCoverage},
-        observer::Observer,
-    },
+    feedback::observer::Observer,
     program::{
         gadget::{
             ctype::{get_integer_ty_max, get_integer_ty_min},
@@ -290,59 +284,36 @@ fn find_testbed_program(func: &str, deopt: &Deopt) -> Vec<usize> {
     vec![]
 }
 
-fn get_corpora_coverage(
-    fuzzer_code: &Path,
-    fuzzer_cov: &Path,
-    corpora: &Path,
-    executor: &Executor,
-) -> Result<CodeCoverage> {
-    let work_dir = get_file_dirname(fuzzer_code);
-    let profraw: PathBuf = [work_dir.clone(), "check.profraw".into()].iter().collect();
-    let profdata: PathBuf = [work_dir, "check.profdata".into()].iter().collect();
-
-    let extra_args = vec![corpora.as_os_str()];
-    let extra_envs = vec![(OsStr::new("LLVM_PROFILE_FILE"), profraw.as_os_str())];
-
-    let has_err = executor.execute(fuzzer_cov, extra_args, extra_envs, None, None, false)?;
-    if has_err.is_some() {
-        eyre::bail!(
-            "Find testbed corpora should not fail! Binary: {fuzzer_cov:?}, File: {corpora:?}, ERR: {has_err:?}"
-        )
-    }
-    executor.convert_profraw_to_profdata(&profraw, &profdata)?;
-    let cov = executor.obtain_cov_from_profdata(&profdata)?;
-    let lcov = executor.obtain_fuzzer_cov_from_profdata(&profdata, fuzzer_code, fuzzer_cov)?;
-    let cov = cov.set_fuzzer_lines(lcov);
-    Ok(cov)
-}
-
 /// Find a testbed corpora for a program. The testbed corpora should be good enough to cover the program's code.
 pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBuf> {
     log::debug!("Find testbed corpora for program: {:?}", program_path);
     static CACHE: OnceCell<RwLock<Vec<PathBuf>>> = OnceCell::new();
     let cache = CACHE.get_or_init(|| RwLock::new(Vec::new()));
 
-    let executor = Executor::new(deopt)?;
     let seed_id = Program::load_from_path(program_path)?.id;
-    executor.compile_seed(seed_id)?;
     let fuzzer_code = deopt.get_work_seed_by_id(seed_id)?;
     let work_dir = get_file_dirname(&fuzzer_code);
-    let fuzzer_cov: PathBuf = fuzzer_code.with_extension("cov.out");
+    let fuzzer_sancov = fuzzer_code.with_extension("sancov");
+    let sancov_dir: PathBuf = [work_dir.clone(), "sancov".into()].iter().collect();
 
     let mut ranked_files = Vec::new();
 
+    let get_sancov_score = |corpus_file: &Path| -> usize {
+        let corpus_name = corpus_file.file_name().unwrap_or_default();
+        let specific_sancov_dir = sancov_dir.join(corpus_name);
+        if let Some(sancov_file) = Executor::get_sancov_file_from_sancov_dir(&specific_sancov_dir) {
+            if let Ok(Some(sancov_info)) =
+                Executor::symbolize_sancov_file(&fuzzer_sancov, &sancov_file)
+            {
+                return sancov_info.covered_points.len();
+            }
+        }
+        0
+    };
+
     for cache_file in cache.read().unwrap().iter() {
-        let cov = get_corpora_coverage(&fuzzer_code, &fuzzer_cov, cache_file, &executor);
-        if let Err(err) = cov {
-            log::error!("{err}");
-            break;
-        }
-        let cov = cov?;
-        let cov_score = cov.get_total_summary().count_covered_branches();
+        let cov_score = get_sancov_score(cache_file);
         ranked_files.push((cache_file.to_path_buf(), cov_score));
-        if !sanitize_by_fuzzer_coverage(&fuzzer_code, deopt, &cov)? {
-            return Ok(cache_file.to_path_buf());
-        }
     }
 
     // use the minimized corpus to reduce time cost.
@@ -352,16 +323,7 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
     let mut max_branch = 0;
     let mut max_corpora = None;
     for corpora in corpus_files {
-        let cov = get_corpora_coverage(&fuzzer_code, &fuzzer_cov, &corpora, &executor);
-        if let Err(err) = cov {
-            log::error!("{err}");
-            break;
-        }
-        let cov = cov?;
-        if sanitize_by_fuzzer_coverage(&fuzzer_code, deopt, &cov)? {
-            continue;
-        }
-        let covered_branch = cov.get_total_summary().count_covered_branches();
+        let covered_branch = get_sancov_score(&corpora);
         if covered_branch > max_branch {
             max_branch = covered_branch;
             max_corpora = Some(corpora.clone());
@@ -380,8 +342,8 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
             .clone();
         return Ok(corpora);
     }
-    if  !cache.read().unwrap().is_empty()  {
-        let choose = cache.read().unwrap().first().unwrap().to_path_buf() ;
+    if !cache.read().unwrap().is_empty() {
+        let choose = cache.read().unwrap().first().unwrap().to_path_buf();
         return Ok(choose);
     }
     eyre::bail!("Cannot find the corpora that statisfy a good coverage")

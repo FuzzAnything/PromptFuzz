@@ -4,7 +4,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use eyre::Result;
 use plotters::prelude::*;
 use prompt_fuzz::{
-    deopt::{self, Deopt}, execution::Executor, program::Program
+    deopt::{self, Deopt},
+    execution::Executor,
+    program::Program,
 };
 
 fn get_bench_dir() -> Result<PathBuf> {
@@ -267,7 +269,9 @@ fn main() -> Result<()> {
     let config = Config::parse();
     prompt_fuzz::config::Config::init_test(&config.project);
     match &config.command {
-        Commands::Coverage { kind, rand_bench } => coverage(config.project.clone(), kind, *rand_bench)?,
+        Commands::Coverage { kind, rand_bench } => {
+            coverage(config.project.clone(), kind, *rand_bench)?
+        }
     }
     Ok(())
 }
