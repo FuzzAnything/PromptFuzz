@@ -4,6 +4,7 @@ import os
 import subprocess
 import shutil
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT_DIR = "/root/promptfuzz"
 OTUPUT_DIR = f"{ROOT_DIR}/output"
@@ -109,7 +110,7 @@ def compile_afl_fuzzer(project_name):
 
 def compile_cov_fuzzer(project_name):
         # Placeholder for the actual compilation logic
-    print(f"analyzing coverage data for project: {project_name}")
+    print(f"compile coverage fuzzer for project: {project_name}")
     # Here you would add the actual commands to compile the coverage fuzzer
     fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
     if not os.path.exists(fuzzer_dir):
@@ -145,6 +146,66 @@ def compile_cov_fuzzer(project_name):
             os.remove(file_path)
         except Exception as e:
             print(f"Failed to remove {file_path}: {e}")
+        
+def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
+    with ThreadPoolExecutor(max_workers=repeat) as executor:
+        futures = []
+        for round in range(repeat):
+            print(f"Starting AFL fuzzing round {round + 1}/{repeat} for project {project_name}")
+            future = executor.submit(execute_afl_fuzzer, project_name, round + 1)
+            futures.append(future)
+        for future in futures:
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error during AFL fuzzing execution: {e}")
+
+def execute_afl_fuzzer(project_name: str, round: int):
+        # Placeholder for the actual compilation logic
+    print(f"analyzing coverage data for project: {project_name}")
+    # Here you would add the actual commands to compile the coverage fuzzer
+    fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
+    if not os.path.exists(fuzzer_dir):
+        raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
+    fuzzer = os.path.join(fuzzer_dir, "afl_fuzzer")
+    if not os.path.exists(fuzzer):
+        raise FileNotFoundError(f"AFL fuzzer binary {fuzzer} does not exist. Please compile the AFL fuzzer first.")
+    
+    round_output_dir = os.path.join(fuzzer_dir, f"output_round_{round}")
+    if os.path.exists(round_output_dir):
+        shutil.rmtree(round_output_dir, ignore_errors=True)
+    os.makedirs(round_output_dir, exist_ok=True)
+    corpus_dir = os.path.join(fuzzer_dir, "corpus_orig")
+    if not os.path.exists(corpus_dir):
+        raise FileNotFoundError(f"Original corpus directory {corpus_dir} does not exist.")
+    sandbox_cmd = [
+        "bwrap",
+        "--ro-bind", "/", "/",       # 1. mount root directory as read-only (Read-Only)
+        "--dev", "/dev",             # 2. mount /dev (program usually needs /dev/null, /dev/random)
+        "--proc", "/proc",           # 3. mount /proc (if program needs to check process information)
+        "--unshare-net",
+        "--bind", fuzzer_dir, fuzzer_dir, # 4. mount fuzzer directory as read-write (Read-Write)             
+        "--bind", round_output_dir, round_output_dir, # 4. mount output_dir as read-write (Read-Write)
+        "--tmpfs", "/tmp",           # Provide an isolated in-memory /tmp for mkstemp
+        "--die-with-parent",         # 6. parent process dies, child process dies too
+        "--new-session",           # 7. create new process session
+    ]
+
+    envs = os.environ.copy()
+
+    envs["AFL_SKIP_CPUFREQ"] = "1"
+    envs["AFL_NO_UI"] = "1"
+    envs["AFL_DRIVER_CLOSE_FD_MASK"] = "3"
+    cmd = sandbox_cmd + ["stdbuf", "-oL", "-eL", "afl-fuzz", "-i", corpus_dir, "-o", round_output_dir,  "-t", "60000", "-V", "86400" ,"--", fuzzer, "@@"]
+   
+    cmd_str = " ".join(cmd)
+    print(f"Executing AFL fuzzer with command: {cmd_str}")
+    fuzz_log = os.path.join(round_output_dir, "fuzzing.log")
+    with open(fuzz_log, "w") as f:
+        outpput = subprocess.run(cmd, env=envs, stdout=f, stderr=subprocess.STDOUT, cwd=round_output_dir, bufsize=1, text=True)
+    if outpput.returncode != 0:
+        print(f"AFL fuzzer execution failed with return code {outpput.returncode}. Check the log file {fuzz_log} for details.")
+
         
 
 
@@ -235,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument("--compile", action="store_true", help="Whether to compile the AFL fuzzer")
     parser.add_argument("--analyze", action="store_true", help="Analyze crash and coverage data")
     parser.add_argument("--archive", action="store_true", help="Whether to archive the AFL results")
+    parser.add_argument("--repeat-exec", type=int, default=0, help="Number of times to repeat AFL fuzzing")
 
     args = parser.parse_args()
     project_name = args.project_name
@@ -246,3 +308,5 @@ if __name__ == "__main__":
     if args.archive:
         archive_afl_results(project_name)
     afl_dir = f"{OTUPUT_DIR}/afl/{args.project_name}"
+    if args.repeat_exec > 0:
+        execute_afl_fuzzer_repeat(project_name, args.repeat_exec)
