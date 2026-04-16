@@ -239,10 +239,14 @@ def _run_cov_fuzzer_on_queue(fuzzer_cov: str, queue_dir: str, profraw_dir: str, 
                     cmd,
                     env=env,
                     capture_output=True,
-                    text=True,
                     timeout=120,
                     cwd=fuzzer_dir,
                 )
+                output = type("R", (), {
+                    "returncode": output.returncode,
+                    "stdout": output.stdout.decode("utf-8", errors="replace"),
+                    "stderr": output.stderr.decode("utf-8", errors="replace"),
+                })()
             except subprocess.TimeoutExpired as exc:
                 failed += 1
                 logf.write(f"=== seed: {seed} ===\n")
@@ -287,11 +291,11 @@ def _merge_profraw_to_profdata(profraw_dir: str, profdata: str):
         print(output.stderr)
         raise RuntimeError("llvm-profdata merge failed")
 
-def _export_round_cov(fuzzer_cov: str, profdata: str, export_json: str, report_txt: str):
+def _export_round_cov(cov_lib: str, profdata: str, export_json: str, report_txt: str):
     export_cmd = [
         "llvm-cov",
         "export",
-        fuzzer_cov,
+        cov_lib,
         "--skip-expansions",
         f"--instr-profile={profdata}",
     ]
@@ -304,7 +308,7 @@ def _export_round_cov(fuzzer_cov: str, profdata: str, export_json: str, report_t
     report_cmd = [
         "llvm-cov",
         "report",
-        fuzzer_cov,
+        cov_lib,
         f"--instr-profile={profdata}",
     ]
     with open(report_txt, "w") as f:
@@ -320,6 +324,7 @@ def execute_repeat_cov(project_name: str):
     fuzzer_cov = os.path.join(fuzzer_dir, "fuzzer_cov")
     if not os.path.exists(fuzzer_cov):
         raise FileNotFoundError(f"coverage fuzzer binary {fuzzer_cov} does not exist")
+    cov_lib = get_cov_shared_lib_path(project_name)
 
     round_dirs = _find_repeat_round_dirs(fuzzer_dir)
     if not round_dirs:
@@ -345,7 +350,7 @@ def execute_repeat_cov(project_name: str):
         print(f"Collecting coverage for round {round_id} from {queue_dir}")
         _run_cov_fuzzer_on_queue(fuzzer_cov, queue_dir, profraw_dir, run_log)
         _merge_profraw_to_profdata(profraw_dir, profdata)
-        _export_round_cov(fuzzer_cov, profdata, export_json, report_txt)
+        _export_round_cov(cov_lib, profdata, export_json, report_txt)
         print(f"Saved round {round_id} coverage artifacts under {cov_dir}")
         
 def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
