@@ -98,7 +98,9 @@ pub fn get_array_constraint<'a>(
 pub fn infer_constraints(programs: &Vec<PathBuf>, deopt: &Deopt) -> Result<APIConstraints> {
     let mut constraints: HashMap<String, Vec<Constraint>> = HashMap::new();
     for program in programs {
-        static_infer::infer_constraints(program, deopt, &mut constraints)?;
+        if let Err(e) = static_infer::infer_constraints(program, deopt, &mut constraints) {
+            log::warn!("Skip program for static constraint infer: {:?} ({})", program, e);
+        }
     }
     let mut refined = static_infer::refine_constraints(constraints.clone());
     dynamic_infer::infer(&mut refined, deopt)?;
