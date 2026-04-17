@@ -4,6 +4,8 @@ import os
 import subprocess
 import shutil
 import datetime
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 ROOT_DIR = "/root/promptfuzz"
 OTUPUT_DIR = f"{ROOT_DIR}/output"
@@ -66,7 +68,7 @@ def get_project_include_dir(project_name: str):
     return include_dir
 
 def get_3rd_party_lib_dirs(project_name: str) -> str | None:
-    entry = f"{BUILD_DIR}/{project_name}/work//lib"
+    entry = f"{BUILD_DIR}/{project_name}/work/lib"
     if os.path.exists(entry):
         return entry
     return None
@@ -109,7 +111,7 @@ def compile_afl_fuzzer(project_name):
 
 def compile_cov_fuzzer(project_name):
         # Placeholder for the actual compilation logic
-    print(f"analyzing coverage data for project: {project_name}")
+    print(f"compile coverage fuzzer for project: {project_name}")
     # Here you would add the actual commands to compile the coverage fuzzer
     fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
     if not os.path.exists(fuzzer_dir):
@@ -145,6 +147,280 @@ def compile_cov_fuzzer(project_name):
             os.remove(file_path)
         except Exception as e:
             print(f"Failed to remove {file_path}: {e}")
+
+def compile_repeat_cov_fuzzer(project_name: str):
+    print(f"Compiling repeat coverage fuzzer for project: {project_name}")
+    fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
+    if not os.path.exists(fuzzer_dir):
+        raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
+
+    cc_files = [f for f in os.listdir(fuzzer_dir) if f.endswith(".cc")]
+    if not cc_files:
+        raise FileNotFoundError(f"No .cc files found in {fuzzer_dir}.")
+
+    cmd = [
+        "clang++",
+        f"-I{get_project_include_dir(project_name)}",
+        "-I/root/promptfuzz/src/extern",
+        "-g",
+        "-fsanitize=fuzzer",
+        "-fprofile-instr-generate",
+        "-fcoverage-mapping",
+        "-Wl,--no-as-needed",
+        "-Wl,-ldl",
+        "-Wl,-lm",
+        "-Wno-unused-command-line-argument",
+        "-ftrivial-auto-var-init=zero",
+        "-o",
+        "fuzzer_cov",
+    ]
+    if get_3rd_party_lib_dirs(project_name):
+        cmd.append(f"-L{get_3rd_party_lib_dirs(project_name)}")
+    cmd.extend([os.path.join(fuzzer_dir, f) for f in cc_files])
+    cmd.append(get_cov_static_lib_path(project_name))
+
+    extra_flags = load_compilation_extra_flags(project_name)
+    if extra_flags:
+        cmd.extend(extra_flags)
+
+    print("Compilation command:", " ".join(cmd))
+    output = subprocess.run(cmd, cwd=fuzzer_dir, capture_output=True, text=True)
+    if output.returncode != 0:
+        print("Compilation failed with the following error:")
+        print(output.stderr)
+        raise RuntimeError("repeat coverage fuzzer compilation failed.")
+    print("repeat coverage fuzzer compiled successfully.")
+
+def _find_repeat_round_dirs(fuzzer_dir: str):
+    round_dirs = []
+    for entry in os.listdir(fuzzer_dir):
+        if not entry.startswith("output_round_"):
+            continue
+        suffix = entry.replace("output_round_", "", 1)
+        if not suffix.isdigit():
+            continue
+        round_dirs.append((int(suffix), os.path.join(fuzzer_dir, entry)))
+    round_dirs.sort(key=lambda x: x[0])
+    return round_dirs
+
+def _run_cov_fuzzer_on_queue(fuzzer_cov: str, queue_dir: str, profraw_dir: str, run_log: str):
+    env = os.environ.copy()
+    fuzzer_dir = os.path.dirname(fuzzer_cov)
+    queue_files = []
+    for item in sorted(os.listdir(queue_dir)):
+        if item.startswith("."):
+            continue
+        path = os.path.join(queue_dir, item)
+        if os.path.isfile(path):
+            queue_files.append(path)
+
+    if not queue_files:
+        raise RuntimeError(f"No valid queue files found in {queue_dir}")
+
+    failed = 0
+    with open(run_log, "w") as logf:
+        for idx, seed in enumerate(queue_files):
+            profraw = os.path.join(profraw_dir, f"seed_{idx:06d}.profraw")
+            env["LLVM_PROFILE_FILE"] = profraw
+            sandbox_cmd = [
+                "bwrap",
+                "--ro-bind", "/", "/",
+                "--dev", "/dev",
+                "--proc", "/proc",
+                "--unshare-net",
+                "--bind", fuzzer_dir, fuzzer_dir,
+                "--tmpfs", "/tmp",
+                "--die-with-parent",
+                "--new-session",
+            ]
+            cmd = sandbox_cmd + ["stdbuf", "-oL", "-eL", fuzzer_cov, seed, "-runs=0"]
+            try:
+                output = subprocess.run(
+                    cmd,
+                    env=env,
+                    capture_output=True,
+                    timeout=120,
+                    cwd=fuzzer_dir,
+                )
+                output = type("R", (), {
+                    "returncode": output.returncode,
+                    "stdout": output.stdout.decode("utf-8", errors="replace"),
+                    "stderr": output.stderr.decode("utf-8", errors="replace"),
+                })()
+            except subprocess.TimeoutExpired as exc:
+                failed += 1
+                logf.write(f"=== seed: {seed} ===\n")
+                logf.write("returncode: timeout\n")
+                if exc.stdout:
+                    logf.write(str(exc.stdout))
+                if exc.stderr:
+                    logf.write(str(exc.stderr))
+                logf.write("\n")
+                continue
+            logf.write(f"=== seed: {seed} ===\n")
+            logf.write(f"returncode: {output.returncode}\n")
+            if output.stdout:
+                logf.write(output.stdout)
+            if output.stderr:
+                logf.write(output.stderr)
+            logf.write("\n")
+
+            if output.returncode != 0:
+                failed += 1
+
+    print(f"Executed {len(queue_files)} queue files from {queue_dir}, failed: {failed}")
+
+def _merge_profraw_to_profdata(profraw_dir: str, profdata: str):
+    profraw_files = [
+        os.path.join(profraw_dir, f)
+        for f in os.listdir(profraw_dir)
+        if f.endswith(".profraw")
+    ]
+    if not profraw_files:
+        raise RuntimeError(f"No .profraw files found in {profraw_dir}")
+
+    cmd = ["llvm-profdata", "merge", "-sparse"]
+    if len(profraw_files) > 5000:
+        cmd.append(profraw_dir)
+    else:
+        cmd.extend(profraw_files)
+    cmd.extend(["-o", profdata])
+
+    output = subprocess.run(cmd, capture_output=True, text=True)
+    if output.returncode != 0:
+        print(output.stderr)
+        raise RuntimeError("llvm-profdata merge failed")
+
+def _export_round_cov(cov_lib: str, profdata: str, export_json: str, report_txt: str):
+    export_cmd = [
+        "llvm-cov",
+        "export",
+        cov_lib,
+        "--skip-expansions",
+        f"--instr-profile={profdata}",
+    ]
+    with open(export_json, "w") as f:
+        output = subprocess.run(export_cmd, stdout=f, stderr=subprocess.PIPE, text=True)
+    if output.returncode != 0:
+        print(output.stderr)
+        raise RuntimeError("llvm-cov export failed")
+
+    report_cmd = [
+        "llvm-cov",
+        "report",
+        cov_lib,
+        f"--instr-profile={profdata}",
+    ]
+    with open(report_txt, "w") as f:
+        output = subprocess.run(report_cmd, stdout=f, stderr=subprocess.PIPE, text=True)
+    if output.returncode != 0:
+        print(output.stderr)
+        raise RuntimeError("llvm-cov report failed")
+
+def execute_repeat_cov(project_name: str):
+    compile_repeat_cov_fuzzer(project_name)
+
+    fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
+    fuzzer_cov = os.path.join(fuzzer_dir, "fuzzer_cov")
+    if not os.path.exists(fuzzer_cov):
+        raise FileNotFoundError(f"coverage fuzzer binary {fuzzer_cov} does not exist")
+    cov_lib = get_cov_shared_lib_path(project_name)
+
+    round_dirs = _find_repeat_round_dirs(fuzzer_dir)
+    if not round_dirs:
+        raise FileNotFoundError(f"No repeat AFL outputs found under {fuzzer_dir}")
+
+    for round_id, round_output_dir in round_dirs:
+        queue_dir = os.path.join(round_output_dir, "default", "queue")
+        if not os.path.exists(queue_dir):
+            print(f"Skip round {round_id}: queue not found in {queue_dir}")
+            continue
+
+        cov_dir = os.path.join(round_output_dir, "coverage")
+        if os.path.exists(cov_dir):
+            shutil.rmtree(cov_dir, ignore_errors=True)
+        profraw_dir = os.path.join(cov_dir, "profraw")
+        Path(profraw_dir).mkdir(parents=True, exist_ok=True)
+
+        profdata = os.path.join(cov_dir, "round.profdata")
+        export_json = os.path.join(cov_dir, "llvm_cov_export.json")
+        report_txt = os.path.join(cov_dir, "llvm_cov_report.txt")
+        run_log = os.path.join(cov_dir, "fuzzer_cov_run.log")
+
+        print(f"Collecting coverage for round {round_id} from {queue_dir}")
+        _run_cov_fuzzer_on_queue(fuzzer_cov, queue_dir, profraw_dir, run_log)
+        _merge_profraw_to_profdata(profraw_dir, profdata)
+        _export_round_cov(cov_lib, profdata, export_json, report_txt)
+        print(f"Saved round {round_id} coverage artifacts under {cov_dir}")
+        
+def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
+    fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
+    if not os.path.exists(fuzzer_dir):
+        raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
+    corpus_dir = os.path.join(fuzzer_dir, "corpus")
+    if not os.path.exists(corpus_dir):
+        raise FileNotFoundError(f"Corpus directory {corpus_dir} does not exist.")
+    corpus_orig_dir = os.path.join(fuzzer_dir, "corpus_orig")
+    if not os.path.exists(corpus_orig_dir):
+        shutil.copytree(corpus_dir, corpus_orig_dir, dirs_exist_ok=True)
+    with ThreadPoolExecutor(max_workers=repeat) as executor:
+        futures = []
+        for round in range(repeat):
+            print(f"Starting AFL fuzzing round {round + 1}/{repeat} for project {project_name}")
+            future = executor.submit(execute_afl_fuzzer, project_name, round + 1)
+            futures.append(future)
+        for future in futures:
+            try:
+                future.result()
+            except Exception as e:
+                print(f"Error during AFL fuzzing execution: {e}")
+
+def execute_afl_fuzzer(project_name: str, round: int):
+        # Placeholder for the actual compilation logic
+    print(f"analyzing coverage data for project: {project_name}")
+    # Here you would add the actual commands to compile the coverage fuzzer
+    fuzzer_dir = f"{OTUPUT_DIR}/{project_name}/exploit_fuzzers/Fuzzer_000"
+    if not os.path.exists(fuzzer_dir):
+        raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
+    fuzzer = os.path.join(fuzzer_dir, "afl_fuzzer")
+    if not os.path.exists(fuzzer):
+        raise FileNotFoundError(f"AFL fuzzer binary {fuzzer} does not exist. Please compile the AFL fuzzer first.")
+    
+    round_output_dir = os.path.join(fuzzer_dir, f"output_round_{round}")
+    if os.path.exists(round_output_dir):
+        shutil.rmtree(round_output_dir, ignore_errors=True)
+    os.makedirs(round_output_dir, exist_ok=True)
+    corpus_dir = os.path.join(fuzzer_dir, "corpus_orig")
+    if not os.path.exists(corpus_dir):
+        raise FileNotFoundError(f"Original corpus directory {corpus_dir} does not exist.")
+    sandbox_cmd = [
+        "bwrap",
+        "--ro-bind", "/", "/",       # 1. mount root directory as read-only (Read-Only)
+        "--dev", "/dev",             # 2. mount /dev (program usually needs /dev/null, /dev/random)
+        "--proc", "/proc",           # 3. mount /proc (if program needs to check process information)
+        "--unshare-net",
+        "--bind", fuzzer_dir, fuzzer_dir, # 4. mount fuzzer directory as read-write (Read-Write)             
+        "--bind", round_output_dir, round_output_dir, # 4. mount output_dir as read-write (Read-Write)
+        "--tmpfs", "/tmp",           # Provide an isolated in-memory /tmp for mkstemp
+        "--die-with-parent",         # 6. parent process dies, child process dies too
+        "--new-session",           # 7. create new process session
+    ]
+
+    envs = os.environ.copy()
+
+    envs["AFL_SKIP_CPUFREQ"] = "1"
+    envs["AFL_NO_UI"] = "1"
+    envs["AFL_DRIVER_CLOSE_FD_MASK"] = "3"
+    cmd = sandbox_cmd + ["stdbuf", "-oL", "-eL", "afl-fuzz", "-i", corpus_dir, "-o", round_output_dir,  "-t", "60000", "-V", "86400" ,"--", fuzzer, "@@"]
+   
+    cmd_str = " ".join(cmd)
+    print(f"Executing AFL fuzzer with command: {cmd_str}")
+    fuzz_log = os.path.join(round_output_dir, "fuzzing.log")
+    with open(fuzz_log, "w") as f:
+        outpput = subprocess.run(cmd, env=envs, stdout=f, stderr=subprocess.STDOUT, cwd=round_output_dir, bufsize=1, text=True)
+    if outpput.returncode != 0:
+        print(f"AFL fuzzer execution failed with return code {outpput.returncode}. Check the log file {fuzz_log} for details.")
+
         
 
 
@@ -235,6 +511,8 @@ if __name__ == "__main__":
     parser.add_argument("--compile", action="store_true", help="Whether to compile the AFL fuzzer")
     parser.add_argument("--analyze", action="store_true", help="Analyze crash and coverage data")
     parser.add_argument("--archive", action="store_true", help="Whether to archive the AFL results")
+    parser.add_argument("--repeat-exec", type=int, default=0, help="Number of times to repeat AFL fuzzing")
+    parser.add_argument("--repeat-cov", action="store_true", help="Collect per-round branch coverage from repeat AFL outputs")
 
     args = parser.parse_args()
     project_name = args.project_name
@@ -246,3 +524,7 @@ if __name__ == "__main__":
     if args.archive:
         archive_afl_results(project_name)
     afl_dir = f"{OTUPUT_DIR}/afl/{args.project_name}"
+    if args.repeat_exec > 0:
+        execute_afl_fuzzer_repeat(project_name, args.repeat_exec)
+    if args.repeat_cov:
+        execute_repeat_cov(project_name)

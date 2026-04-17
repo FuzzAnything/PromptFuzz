@@ -27,3 +27,4 @@
 .env
 ./experiments
 /output_*
+*.pyc
