@@ -358,9 +358,9 @@ def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
     if not os.path.exists(fuzzer_dir):
         raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
     corpus_dir = os.path.join(fuzzer_dir, "corpus")
-    if not os.path.exists(corpus_dir):
-        raise FileNotFoundError(f"Corpus directory {corpus_dir} does not exist.")
     corpus_orig_dir = os.path.join(fuzzer_dir, "corpus_orig")
+    if not os.path.exists(corpus_dir) and not os.path.exists(corpus_orig_dir):
+        raise FileNotFoundError(f"Corpus directory {corpus_dir} does not exist.")
     if not os.path.exists(corpus_orig_dir):
         shutil.copytree(corpus_dir, corpus_orig_dir, dirs_exist_ok=True)
     with ThreadPoolExecutor(max_workers=repeat) as executor:
