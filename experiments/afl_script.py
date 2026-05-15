@@ -351,6 +351,7 @@ def execute_repeat_cov(project_name: str):
         _run_cov_fuzzer_on_queue(fuzzer_cov, queue_dir, profraw_dir, run_log)
         _merge_profraw_to_profdata(profraw_dir, profdata)
         _export_round_cov(cov_lib, profdata, export_json, report_txt)
+        shutil.rmtree(execute_repeat_cov, ignore_errors=True)
         print(f"Saved round {round_id} coverage artifacts under {cov_dir}")
         
 def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
@@ -358,9 +359,9 @@ def execute_afl_fuzzer_repeat(project_name: str, repeat: int):
     if not os.path.exists(fuzzer_dir):
         raise FileNotFoundError(f"Fuzzer directory {fuzzer_dir} does not exist.")
     corpus_dir = os.path.join(fuzzer_dir, "corpus")
-    if not os.path.exists(corpus_dir):
-        raise FileNotFoundError(f"Corpus directory {corpus_dir} does not exist.")
     corpus_orig_dir = os.path.join(fuzzer_dir, "corpus_orig")
+    if not os.path.exists(corpus_dir) and not os.path.exists(corpus_orig_dir):
+        raise FileNotFoundError(f"Corpus directory {corpus_dir} does not exist.")
     if not os.path.exists(corpus_orig_dir):
         shutil.copytree(corpus_dir, corpus_orig_dir, dirs_exist_ok=True)
     with ThreadPoolExecutor(max_workers=repeat) as executor:

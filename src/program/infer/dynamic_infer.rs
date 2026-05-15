@@ -313,13 +313,17 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
 
     for cache_file in cache.read().unwrap().iter() {
         let cov_score = get_sancov_score(cache_file);
+        if cov_score > 0 {
+            return Ok(cache_file.to_path_buf());
+        }
         ranked_files.push((cache_file.to_path_buf(), cov_score));
     }
 
     // use the minimized corpus to reduce time cost.
     let corpus_dir: PathBuf = [work_dir.clone(), "corpus".into()].iter().collect();
     let corpus_files = crate::deopt::utils::read_all_files_in_dir(&corpus_dir)?;
-
+    
+    // Shuffle or just take top N to avoid huge iteration if not needed, or just return first > 0
     let mut max_branch = 0;
     let mut max_corpora = None;
     for corpora in corpus_files {
@@ -327,6 +331,11 @@ pub fn find_testbed_corpora(program_path: &Path, deopt: &Deopt) -> Result<PathBu
         if covered_branch > max_branch {
             max_branch = covered_branch;
             max_corpora = Some(corpora.clone());
+        }
+        // Early stop if we found a reasonably good one to save time. 
+        // We only really need a testbed to exercise the function.
+        if max_branch > 1000 {
+            break;
         }
     }
     if let Some(corpora) = max_corpora {

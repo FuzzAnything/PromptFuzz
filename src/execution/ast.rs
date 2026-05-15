@@ -138,7 +138,7 @@ fn ast_dump_filter(data: &[u8], func: &str) -> Result<Node> {
         }
         last = *cur;
     }
-    unreachable!()
+    eyre::bail!("Cannot find function {func} in the AST dump")
 }
 
 /// elimitate the irrelative asts that included in this file.
