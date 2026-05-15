@@ -151,7 +151,9 @@ impl LibFuzzer {
     fn init_corpus_before_constraint_infer(&self, succ_programs: &Vec<PathBuf>) -> Result<()> {
         log::info!("Initialize the corpus for constraint inference!");
         for program in succ_programs {
-            let _ = self.minimize_fuzzer_corpus_before_constraint_infer(program)?;
+            if let Err(e) = self.minimize_fuzzer_corpus_before_constraint_infer(program) {
+                log::warn!("Skip program for constraint corpus infer: {:?} ({})", program, e);
+            }
         }
         Ok(())
     }

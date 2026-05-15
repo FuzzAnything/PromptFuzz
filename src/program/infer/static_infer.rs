@@ -421,6 +421,11 @@ fn refine_file_name_constraint(func: &str, constraints: Vec<Constraint>) -> Vec<
     let deopt = Deopt::new(get_library_name()).unwrap();
     for constraint in constraints {
         if let Constraint::FileName(arg_pos) = constraint {
+            let res = check_func_arg_is_file_name(func, arg_pos, &deopt);
+            if res.is_err() {
+                log::error!("Failed to check file name constraint for func: {func}, arg_pos: {arg_pos}, error: {:#?}", res.err());
+                continue;
+            }
             if !check_func_arg_is_file_name(func, arg_pos, &deopt).unwrap() {
                 continue;
             }

@@ -351,6 +351,7 @@ def execute_repeat_cov(project_name: str):
         _run_cov_fuzzer_on_queue(fuzzer_cov, queue_dir, profraw_dir, run_log)
         _merge_profraw_to_profdata(profraw_dir, profdata)
         _export_round_cov(cov_lib, profdata, export_json, report_txt)
+        shutil.rmtree(execute_repeat_cov, ignore_errors=True)
         print(f"Saved round {round_id} coverage artifacts under {cov_dir}")
         
 def execute_afl_fuzzer_repeat(project_name: str, repeat: int):

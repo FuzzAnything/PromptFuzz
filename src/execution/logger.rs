@@ -350,6 +350,10 @@ impl TimeUsage {
             return Ok(0_f32);
         }
         let buf = std::fs::read_to_string(log_path)?;
+        let buf = buf.trim();
+        if buf.is_empty() {
+            return Ok(0_f32);
+        }
         let usage: f32 = buf.parse()?;
         Ok(usage)
     }
